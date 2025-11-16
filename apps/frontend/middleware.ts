@@ -5,13 +5,13 @@ export async function middleware(request: NextRequest) {
   const session = getSessionCookie(request);
   const { pathname } = request.nextUrl;
 
-  // If user is authenticated AND tries to access /signin or /signup → redirect to /projects
+  // If user is authenticated AND tries to access /signin or /signup → redirect to /dashboard
   if (session && (pathname === "/signin" || pathname === "/signup")) {
-    return NextResponse.redirect(new URL("/projects", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // If NOT authenticated and tries to access protected routes → redirect to /
-  if (!session && pathname.startsWith("/projects")) {
+  if (!session && pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -19,9 +19,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/signin",
-    "/signup",
-    "/projects/:path*", // protect all project routes
-  ],
+  matcher: ["/signin", "/signup", "/dashboard"],
 };

@@ -10,7 +10,7 @@ export default async function Home() {
     headers: await headers(),
   });
 
-  if (session) return redirect("/projects");
+  if (session) return redirect("/dashboard");
 
   return (
     <main className="flex flex-col min-h-screen">

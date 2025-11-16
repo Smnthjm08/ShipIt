@@ -14,7 +14,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
   id            String   @id @default(cuid())
   name          String
@@ -24,9 +23,10 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  sessions  Session[]
-  accounts  Account[]
-  // workspace Workspace?
+  sessions            Session[]
+  accounts            Account[]
+  githubInstallations GitHubInstallation[]
+  projects            Project[]
 
   @@map("user")
 }
@@ -35,10 +35,10 @@ model Session {
   id        String   @id @default(cuid())
   expiresAt DateTime
   token     String   @unique
-  createdAt DateTime
-  updatedAt DateTime
   ipAddress String?
   userAgent String?
+  createdAt DateTime
+  updatedAt DateTime
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -75,4 +75,39 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+model GitHubInstallation {
+  id             String    @id @default(cuid())
+  installationId Int
+  accountLogin   String
+  accountId      Int
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id           String  @id @default(cuid())
+  name         String
+  repoUrl      String
+  owner        String
+  repoName     String
+  branch       String  @default("main")
+  framework    String?
+  buildCommand String?
+  outputDir    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // deployments  Deployment[]
 }

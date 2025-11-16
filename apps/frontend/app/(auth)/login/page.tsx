@@ -27,7 +27,7 @@ export default function SignIn() {
   const router = useRouter();
 
   return (
-    <Card className="w-full min-w-md mx-auto shadow-lg rounded-2xl border">
+    <Card className="w-full min-w-md mx-auto shadow-lg rounded-2xl border-none">
       <CardHeader>
         <CardTitle className="text-lg md:text-xl">Login</CardTitle>
         <CardDescription className="text-xs md:text-sm">
@@ -80,24 +80,22 @@ export default function SignIn() {
                 {
                   email,
                   password,
-                  callbackURL: "/projects",
+                  callbackURL: "/dashboard",
                 },
                 {
                   onSuccess() {
                     toast.success("Logged in successfully!");
                   },
-                  onRequest: (ctx) => {
+                  onRequest: () => {
                     setLoading(true);
-                    console.log("Signing in...", ctx);
                   },
-                  onResponse: (ctx) => {
+                  onResponse: () => {
                     setLoading(false);
-                    console.log("Sign in response...", ctx.response);
                   },
                   onError: (ctx) => {
                     toast.error(ctx.error.message || "Error logging in");
                     setLoading(false);
-                    console.log("Sign in error...", ctx);
+                    console.log("error signing in", ctx);
                   },
                 },
               );
@@ -127,16 +125,14 @@ export default function SignIn() {
                 await signIn.social(
                   {
                     provider: "github",
-                    callbackURL: "/projects",
+                    callbackURL: "/dashboard",
                   },
                   {
-                    onRequest: (ctx) => {
+                    onRequest: () => {
                       setLoading(true);
-                      console.log("Signing up...", ctx);
                     },
-                    onResponse: (ctx) => {
+                    onResponse: () => {
                       setLoading(false);
-                      console.log("Signup res...", ctx);
                     },
                   },
                 );

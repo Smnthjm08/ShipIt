@@ -28,7 +28,7 @@ export default function SignUp() {
   const router = useRouter();
 
   return (
-    <Card className="w-full min-w-md mx-auto shadow-lg rounded-2xl border">
+    <Card className="w-full min-w-md mx-auto shadow-lg rounded-2xl border-none">
       <CardHeader>
         <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
         <CardDescription className="text-xs md:text-sm">
@@ -97,7 +97,7 @@ export default function SignUp() {
                 email,
                 password,
                 name: `${firstName} ${lastName}`,
-                callbackURL: "/projects",
+                callbackURL: "/dashboard",
                 fetchOptions: {
                   onRequest: () => setLoading(true),
                   onResponse: () => setLoading(false),
@@ -107,7 +107,7 @@ export default function SignUp() {
                   },
                   onSuccess: async () => {
                     toast.success("Account created successfully!");
-                    router.push("/projects");
+                    router.push("/dashboard");
                   },
                 },
               });
@@ -141,25 +141,19 @@ export default function SignUp() {
                   await signIn.social(
                     {
                       provider: "github",
-                      callbackURL: "/projects",
+                      callbackURL: "/dashboard",
                     },
                     {
-                      onRequest: (ctx) => {
+                      onRequest: () => {
                         setLoading(true);
-                        console.log("Signing up...", ctx);
                       },
-                      onResponse: (ctx) => {
+                      onResponse: () => {
                         setLoading(false);
-                        console.log("Signup res...", ctx);
                       },
-                      onError(context) {
-                        toast.error(context.error.message);
+                      onError(ctx) {
+                        toast.error(ctx.error.message);
+                        console.log("error signing up", ctx.error);
                         setLoading(false);
-                        console.log("Signup error...", context);
-                      },
-                      onSuccess(context) {
-                        console.log("Signup success...", context);
-                        // toast.success("Successfully signed up!");
                       },
                     },
                   );
