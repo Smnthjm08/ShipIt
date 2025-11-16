@@ -1,5 +1,12 @@
 {
   "extends": "@workspace/typescript-config/base.json",
-  "include": ["src/**/*", "prisma"],
-  "exclude": ["node_modules"]
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "rootDir": "src",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

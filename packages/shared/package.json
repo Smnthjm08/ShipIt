@@ -1,0 +1,24 @@
+{
+  "name": "@workspace/shared",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "better-auth": "^1.3.34"
+  },
+  "devDependencies": {
+        "@workspace/eslint-config": "workspace:^",
+    "@workspace/typescript-config": "workspace:*",
+    "@workspace/db": "workspace:*"
+  },
+  "exports": {
+    "./auth": "./src/auth/auth.ts",
+    "./client": "./src/auth/client.ts"
+  }
+}

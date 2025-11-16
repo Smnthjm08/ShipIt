@@ -7,6 +7,7 @@ export async function GET(_req: NextRequest) {
 
   return NextResponse.json({
     status: "healthy!",
-    env: process.env.NODE_ENV!,
+    env: process.env.ENV,
+    envs: process.env.DATABASE_URL!,
   });
 }
