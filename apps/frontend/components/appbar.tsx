@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { LogOut, LogsIcon } from "lucide-react";
 import Link from "next/link";
+import { ModeToggle } from "./mode-toggle";
 
 function getInitials(name?: string | null) {
   if (!name) return "U";
@@ -37,7 +38,7 @@ export function Appbar() {
   };
 
   return (
-    <header className="flex items-center justify-between px-8 py-4 border-b-2 border-dashed border-gray-600 h-16">
+    <header className="flex sticky items-center justify-between px-8 py-4 border-b-2 border-dashed border-gray-600 h-16">
       <Link href="/dashboard">
         <div className="flex gap-2 items-center">
           <LogsIcon width={20} height={20} />
@@ -45,51 +46,55 @@ export function Appbar() {
         </div>
       </Link>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
-            <Avatar className="h-8 w-8">
-              {session?.user?.image !== null ? (
-                <AvatarImage
-                  src={session?.user?.image}
-                  alt={session?.user?.name ?? "User"}
-                />
-              ) : (
-                <AvatarFallback>
-                  {getInitials(session?.user?.name)}
-                </AvatarFallback>
-              )}
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
+      <div className="flex items-center gap-x-4">
+        <ModeToggle />
 
-        <DropdownMenuContent className="w-48" align="end">
-          <DropdownMenuLabel className="font-normal">
-            <p className="text-sm font-medium">{session?.user?.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {session?.user?.email}
-            </p>
-          </DropdownMenuLabel>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
+              <Avatar className="h-8 w-8">
+                {session?.user?.image !== null ? (
+                  <AvatarImage
+                    src={session?.user?.image}
+                    alt={session?.user?.name ?? "User"}
+                  />
+                ) : (
+                  <AvatarFallback>
+                    {getInitials(session?.user?.name)}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
 
-          <DropdownMenuSeparator />
+          <DropdownMenuContent className="w-48" align="end">
+            <DropdownMenuLabel className="font-normal">
+              <p className="text-sm font-medium">{session?.user?.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {session?.user?.email}
+              </p>
+            </DropdownMenuLabel>
 
-          <DropdownMenuItem
-            onClick={() => router.push("/profile")}
-            className="cursor-pointer"
-          >
-            Profile
-          </DropdownMenuItem>
+            <DropdownMenuSeparator />
 
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={handleLogout}
-            className="cursor-pointer text-red-500 font-semibold"
-          >
-            <LogOut className="mr-2 h-4 w-4 text-red-500" />
-            Logout
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuItem
+              onClick={() => router.push("/profile")}
+              className="cursor-pointer"
+            >
+              Profile
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="cursor-pointer text-red-500 font-semibold"
+            >
+              <LogOut className="mr-2 h-4 w-4 text-red-500" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   );
 }

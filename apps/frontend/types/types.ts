@@ -25,3 +25,19 @@ export interface GitHubInstallation {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface Repo {
+  id: number;
+  name: string;
+  fullName: string;
+  private: boolean;
+  visibility: "public" | "private";
+  owner: string;
+  description: string | null;
+  updatedAt: string; // ISO date string
+  size: number;
+  defaultBranch: string;
+  language: string | null;
+  topics: string[];
+  techStack: string[];
+}

@@ -23,9 +23,9 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    const gitHubInstallation = await prisma.gitHubInstallation.findMany({
-      where: { userId },
-    });
+    // const gitHubInstallation = await prisma.gitHubInstallation.findMany({
+    //   where: { userId },
+    // });
 
     const accounts = await prisma.account.findMany({
       where: { userId },
@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
         q,
         page,
         per_page,
+        order: "asc",
+        sort: "updated",
       });
 
       repos = searchRes.data.items;
@@ -65,6 +67,8 @@ export async function GET(req: NextRequest) {
       const res = await octokit.request("GET /user/repos/", {
         page,
         per_page,
+        order: "desc",
+        sort: "updated",
       });
       repos = res.data;
     }
@@ -95,8 +99,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       projects,
-      github: gitHubInstallation,
+      // github: gitHubInstallation,
       repos: cleanRepos,
+      // repos: []
     });
   } catch (error) {
     console.error("Error fetching dashboard details:", error);

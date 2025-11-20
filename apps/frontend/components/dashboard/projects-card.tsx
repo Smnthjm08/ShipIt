@@ -37,7 +37,7 @@ export default function ProjectsSection({
         </h2>
         {projects.length > 0 && hasGitHubConnection && (
           <Button asChild>
-            <Link href="/project/new">
+            <Link href="/new">
               <Plus className="w-4 h-4 mr-2" />
               New Project
             </Link>
@@ -54,7 +54,7 @@ export default function ProjectsSection({
           </div>
         </ScrollArea>
       ) : (
-        <Empty className="border rounded-lg">
+        <Empty className="border rounded-lg min-h-[450px]">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Folder className="w-12 h-12 text-muted-foreground" />
@@ -73,7 +73,7 @@ export default function ProjectsSection({
           <EmptyContent>
             {hasGitHubConnection ? (
               <Button asChild>
-                <Link href="/project/new">
+                <Link href="/new">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Project
                 </Link>
