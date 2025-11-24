@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { signOut, useSession } from "@workspace/shared/client";
+import { signOut, useSession } from "@workspace/shared/auth/client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
