@@ -5,9 +5,12 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "start": "turbo start",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "db:generate": "turbo db:generate"
+    "db:generate": "turbo db:generate",
+    "postinstall": "turbo db:generate",
+    "db:migrate": "turbo db:migrate"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",
@@ -24,5 +27,8 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
 }

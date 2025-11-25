@@ -5,7 +5,8 @@
     "rootDir": "src",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "types": ["node"]
+    "types": ["node"],
+    "type": "module"
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { signIn } from "@workspace/shared/client";
+import { signIn } from "@workspace/shared/auth/client";
 import { toast } from "sonner";
 
 export default function ConnectGithub() {
