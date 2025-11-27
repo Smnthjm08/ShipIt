@@ -6,7 +6,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "types": ["node"],
-    "type": "module"
+    // "type": "module"
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

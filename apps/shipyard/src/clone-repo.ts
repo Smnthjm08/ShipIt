@@ -7,10 +7,9 @@ export default async function cloneRepository(
   deploymentId: string,
 ) {
   const appRoot = path.join(__dirname, ".."); // apps/shipyard
-  const repoRoot = path.join(appRoot, "repositories"); // apps/shipyard/repositories
+  const repoRoot = path.join(appRoot, "repositories");
   const cloneDir = path.join(repoRoot, deploymentId); // apps/shipyard/repositories/<id>
 
-  // Ensure repositories/ exists
   if (!fs.existsSync(repoRoot)) {
     fs.mkdirSync(repoRoot, { recursive: true });
   }
