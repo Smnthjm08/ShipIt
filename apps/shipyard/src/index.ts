@@ -34,7 +34,7 @@ async function startWorker() {
     await redisPub.publish(`logs-${deploymentId}`, "Deployment Started...");
 
     const githubAccount = updatedDeployment.project.user.accounts.find(
-      (acc: Account) => acc.providerId === "github",
+      (acc: Account) => acc.providerId === "github"
     );
 
     if (!githubAccount?.accessToken) {
@@ -88,14 +88,14 @@ async function startWorker() {
 
     await redisPub.publish(
       `logs-${deploymentId}`,
-      "Repository cloned successfully!",
+      "Repository cloned successfully!"
     );
 
     const dockerConfig = { socketPath: "/var/run/docker.sock" };
 
     const docker = new Docker(dockerConfig);
 
-    console.log("docker", docker);
+    // console.log("docker", docker);
 
     await redisPub.publish(`logs-${deploymentId}`, "docker started!");
 
@@ -143,10 +143,10 @@ async function startWorker() {
         {
           HostConfig: {
             Binds: [`${absolutePath}:/app`],
-            // AutoRemove: true,
+            AutoRemove: true,
           },
           WorkingDir: "/app",
-        },
+        }
       );
 
       const streamData = runResult[0];
@@ -160,7 +160,7 @@ async function startWorker() {
           console.log(`Build Success!`);
           await redisPub.publish(
             `logs-${deploymentId}`,
-            "Build Complete! Starting Upload...",
+            "Build Complete! Starting Upload..."
           );
 
           // find the dist folder
@@ -186,15 +186,19 @@ async function startWorker() {
 
             await redisPub.publish(
               `logs-${deploymentId}`,
-              `Uploaded: ${relativePath}`,
+              `Uploaded: ${relativePath}`
             );
           }
 
           console.log("Deployment Complete");
           await redisPub.publish(
             `logs-${deploymentId}`,
-            "Deployment Successful!",
+            "Deployment Successful!"
           );
+
+          console.log("Cleaning up local artifact...");
+          fs.rmSync(cloneDir, { recursive: true, force: true });
+          console.log("Cleanup finished.");
 
           await updateDeploymentStaus({
             deploymentId,
@@ -204,7 +208,7 @@ async function startWorker() {
           console.error(`Build failed with code ${statusCode}`);
           await redisPub.publish(
             `logs-${deploymentId}`,
-            `Build Failed (Exit Code: ${statusCode})`,
+            `Build Failed (Exit Code: ${statusCode})`
           );
           await updateDeploymentStaus({ deploymentId, status: "failed" });
         }
@@ -212,7 +216,7 @@ async function startWorker() {
         console.error(`Build failed with code ${statusCode}`, error);
         await redisPub.publish(
           `logs-${deploymentId}`,
-          `Build Failed (Exit Code: ${statusCode})`,
+          `Build Failed (Exit Code: ${statusCode})`
         );
       }
     } catch (error) {
