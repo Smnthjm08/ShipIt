@@ -1,5 +1,5 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
 dotenv.config({ path: "../../.env" });
 
@@ -16,11 +16,16 @@ export async function uploadToS3(
   file: Buffer | Uint8Array | string,
   contentType: string,
 ) {
-  console.log("=====================================\n", process.env.AWS_S3_REGION, process.env.AWS_ACCESS_KEY_ID, process.env.AWS_SECRET_ACCESS_KEY)
+  console.log(
+    "=====================================\n",
+    process.env.AWS_S3_REGION,
+    process.env.AWS_ACCESS_KEY_ID,
+    process.env.AWS_SECRET_ACCESS_KEY,
+  );
 
-  if (!process.env.AWS_S3_BUCKET_NAME || !process.env.AWS_S3_REGION) {
-    throw new Error("Missing S3 environment variables");
-  }
+  // if (!process.env.AWS_S3_BUCKET_NAME || !process.env.AWS_S3_REGION) {
+  // throw new Error("Missing S3 environment variables");
+  // }
 
   try {
     const command = new PutObjectCommand({

@@ -34,7 +34,7 @@ async function startWorker() {
     await redisPub.publish(`logs-${deploymentId}`, "Deployment Started...");
 
     const githubAccount = updatedDeployment.project.user.accounts.find(
-      (acc: Account) => acc.providerId === "github"
+      (acc: Account) => acc.providerId === "github",
     );
 
     if (!githubAccount?.accessToken) {
@@ -88,10 +88,12 @@ async function startWorker() {
 
     await redisPub.publish(
       `logs-${deploymentId}`,
-      "Repository cloned successfully!"
+      "Repository cloned successfully!",
     );
 
-    const dockerConfig = { socketPath: "/var/run/docker.sock" };
+    const dockerConfig = {
+      socketPath: process.env.HOME + "/.docker/desktop/docker.sock",
+    };
 
     const docker = new Docker(dockerConfig);
 
@@ -137,16 +139,19 @@ async function startWorker() {
 
       // install dependencies and build
       const runResult = await docker.run(
-        "node:22-alpine",
+        "node:22",
+        // pull
         ["/bin/sh", "-c", "npm install && npm run build"],
         buildStream,
         {
           HostConfig: {
             Binds: [`${absolutePath}:/app`],
-            AutoRemove: true,
+            // pull: false,
+            // AutoRemove: true,
           },
           WorkingDir: "/app",
-        }
+          // pull: false
+        },
       );
 
       const streamData = runResult[0];
@@ -160,13 +165,12 @@ async function startWorker() {
           console.log(`Build Success!`);
           await redisPub.publish(
             `logs-${deploymentId}`,
-            "Build Complete! Starting Upload..."
+            "Build Complete! Starting Upload...",
           );
 
           // find the dist folder
           const distFolder = path.join(cloneDir, "dist");
 
-          // get files recursively
           const allFiles = getAllFiles(distFolder);
 
           for (const file of allFiles) {
@@ -186,14 +190,14 @@ async function startWorker() {
 
             await redisPub.publish(
               `logs-${deploymentId}`,
-              `Uploaded: ${relativePath}`
+              `Uploaded: ${relativePath}`,
             );
           }
 
           console.log("Deployment Complete");
           await redisPub.publish(
             `logs-${deploymentId}`,
-            "Deployment Successful!"
+            "Deployment Successful!",
           );
 
           console.log("Cleaning up local artifact...");
@@ -208,7 +212,7 @@ async function startWorker() {
           console.error(`Build failed with code ${statusCode}`);
           await redisPub.publish(
             `logs-${deploymentId}`,
-            `Build Failed (Exit Code: ${statusCode})`
+            `Build Failed (Exit Code: ${statusCode})`,
           );
           await updateDeploymentStaus({ deploymentId, status: "failed" });
         }
@@ -216,32 +220,13 @@ async function startWorker() {
         console.error(`Build failed with code ${statusCode}`, error);
         await redisPub.publish(
           `logs-${deploymentId}`,
-          `Build Failed (Exit Code: ${statusCode})`
+          `Build Failed (Exit Code: ${statusCode})`,
         );
       }
     } catch (error) {
       console.error("Docker Error:", error);
       await redisPub.publish(`logs-${deploymentId}`, "Build failed to start.");
     }
-
-    // // upload build
-    // const allFiles =
-
-    // const uploadPromises = allFiles.map(async (filePath) => {
-    //   const relativePath = path
-    //     .relative(clonePath, filePath)
-    //     .replace(/\\/g, "/");
-    //   const contentType = mimeLookup(filePath) || "application/octet-stream";
-    //   const fileBuffer = fs.readFileSync(filePath);
-    //   const s3Key = `${s3Prefix}/${relativePath}`;
-
-    //   console.log(`⬆️ Uploading: ${relativePath}`);
-    //   await uploadToS3(s3Key, fileBuffer, contentType as string);
-    // });
-
-    // finish deployment
-
-    // return;
   }
 }
 

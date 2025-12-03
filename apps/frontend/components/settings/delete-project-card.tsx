@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button"
-import { SettingsCard } from "@/components/settings/settings-card"
+import { Button } from "@/components/ui/button";
+import { SettingsCard } from "@/components/settings/settings-card";
 
 export function DeleteProjectCard() {
   return (
@@ -8,8 +8,8 @@ export function DeleteProjectCard() {
         <div>
           <h2 className="text-xl font-semibold mb-2">Delete Project</h2>
           <p className="text-muted-foreground">
-            Permanently delete this project and all deployments, domains, environment variables, serverless functions,
-            and settings.
+            Permanently delete this project and all deployments, domains,
+            environment variables, serverless functions, and settings.
           </p>
         </div>
 
@@ -27,11 +27,14 @@ export function DeleteProjectCard() {
         </div>
 
         <div className="border-t border-border pt-4 flex justify-end">
-          <Button variant="destructive" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <Button
+            variant="destructive"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
             Delete Project
           </Button>
         </div>
       </div>
     </SettingsCard>
-  )
+  );
 }

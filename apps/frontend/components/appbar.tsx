@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,22 +9,22 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { LogOut, LogInIcon as LogsIcon } from "lucide-react"
-import Link from "next/link"
-import { ModeToggle } from "./mode-toggle"
+} from "@/components/ui/dropdown-menu";
+import { LogOut, LogInIcon as LogsIcon } from "lucide-react";
+import Link from "next/link";
+import { ModeToggle } from "./mode-toggle";
 
 function getInitials(name?: string | null) {
-  if (!name) return "U"
-  const parts = name.split(" ")
+  if (!name) return "U";
+  const parts = name.split(" ");
   return parts
     .map((p) => p[0])
     .join("")
-    .toUpperCase()
+    .toUpperCase();
 }
 
 export function Appbar() {
-  const userInitials = getInitials("John Doe")
+  const userInitials = getInitials("John Doe");
 
   return (
     <header className="flex sticky items-center justify-between px-8 py-4 border-b border-border h-16">
@@ -55,7 +55,9 @@ export function Appbar() {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer">
+              Profile
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer text-red-500 font-semibold">
@@ -66,5 +68,5 @@ export function Appbar() {
         </DropdownMenu>
       </div>
     </header>
-  )
+  );
 }

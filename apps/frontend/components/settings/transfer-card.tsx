@@ -37,7 +37,6 @@ export function TransferCard() {
               <p>Coming Soon.</p>
             </TooltipContent>
           </Tooltip>
-
         </div>
       </div>
     </SettingsCard>

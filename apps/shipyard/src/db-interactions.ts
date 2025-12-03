@@ -32,12 +32,6 @@ export async function updateDeploymentStaus({
       },
     });
 
-    console.log(`Deployment updated:\n`, updatedDeployment);
-    console.log(
-      `Deployment updated:\n`,
-      updatedDeployment?.project?.user?.accounts,
-    );
-
     return updatedDeployment;
   } catch (error) {
     console.error(`Error updating deployment status:`, error);
