@@ -3,6 +3,13 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "db:check": "turbo run db:check",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "turbo run db:migrate",
+    "db:pull": "turbo run db:pull",
+    "db:push": "turbo run db:push",
+    "db:studio": "turbo run db:studio",
+    "db:up": "turbo run db:up",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
