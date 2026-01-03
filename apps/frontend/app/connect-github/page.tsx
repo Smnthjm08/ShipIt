@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 export default function SignIn() {
   const [loading, setLoading] = useState(false);
 
+  console.log("cc", process.env.DATABASE_URL);
+
   return (
     <main className="flex items-center min-h-screen flex-row justify-center">
       <Card className="min-w-md text-center">
@@ -31,7 +33,7 @@ export default function SignIn() {
             <div
               className={cn(
                 "w-full gap-2 flex items-center",
-                "justify-between flex-col"
+                "justify-between flex-col",
               )}
             >
               <Button
@@ -53,7 +55,7 @@ export default function SignIn() {
                         console.log("context", ctx);
                         setLoading(false);
                       },
-                    }
+                    },
                   );
                 }}
               >

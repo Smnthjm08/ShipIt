@@ -20,7 +20,7 @@ app.all("/api/auth/{*any}", toNodeHandler(auth));
 app.use(express.json());
 
 app.listen(port, () => {
-    console.log(`Better Auth app listening on port ${port}`);
+  console.log(`Better Auth app listening on port ${port}`);
 });
 
 app.listen(port, () => {
