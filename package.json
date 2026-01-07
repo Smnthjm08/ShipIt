@@ -12,7 +12,8 @@
     "db:reset": "turbo run migrate reset",
     "db:push": "turbo run db push",
     "db:studio": "turbo run studio",
-    "db:generate": "turbo run generate"
+    "generate": "turbo run generate",
+    "postinstall": "pnpm --filter @repo/db run db:generate"
   },
   "devDependencies": {
     "prettier": "^3.7.4",
