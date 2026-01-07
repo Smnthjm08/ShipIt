@@ -1,6 +1,7 @@
 import Image, { type ImageProps } from "next/image";
 import { Button } from "@repo/ui/button";
 import styles from "./page.module.css";
+import { prisma } from "@repo/db";
 
 type Props = Omit<ImageProps, "src"> & {
   srcLight: string;
@@ -18,7 +19,10 @@ const ThemeImage = (props: Props) => {
   );
 };
 
-export default function Home() {
+export default async function Home() {
+  const user = await prisma.user.findMany();
+
+  console.log("user", user);
   return (
     <div className={styles.page}>
       <main className={styles.main}>

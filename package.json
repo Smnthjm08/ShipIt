@@ -1,5 +1,5 @@
 {
-  "name": "ShipIt",
+  "name": "ship-it",
   "private": true,
   "scripts": {
     "build": "turbo run build",
