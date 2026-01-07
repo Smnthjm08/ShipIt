@@ -1,9 +1,14 @@
+import { getUsers } from "@/actions/user";
 import { ComponentExample } from "@/components/component-example";
-import { prisma } from "@repo/db";
 
-export default async function Page() {
-  const user = await prisma.user?.findMany();
-  console.log(">>>>>>>>>>", user);
+export const dynamic = "force-dynamic";
 
-  return <ComponentExample />;
+export default async function Home() {
+  const users = await getUsers();
+  console.log("=======\n", users);
+  return (
+    <div>
+      <ComponentExample />
+    </div>
+  );
 }
