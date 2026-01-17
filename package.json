@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "check-types": "turbo run check-types",
-    "db:migrate": "turbo run migrate dev",
+    "db:migrate": "turbo run db:migrate",
     "db:push": "turbo run db push",
     "db:reset": "turbo run migrate reset",
     "db:studio": "turbo run studio",

@@ -16,6 +16,8 @@ export default async function HomePage() {
       <div>
         <main className="flex flex-col min-h-screen items-center justify-center gap-2">
           <h1>Welcome back, {session.user.name}!</h1>
+          <Button>Hello</Button>
+          <div className="text-blue-400">hellllo</div>
         </main>
       </div>
     );

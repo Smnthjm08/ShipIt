@@ -1,25 +1,24 @@
 import { Router } from "express";
+import { getAllProjectsController } from "../controllers/projects.controller";
 
-const projectRoutes: Router = Router();
+const projectsRoutes: Router = Router();
 
-projectRoutes.post("/", (req, res) => {
-  res.send("create of projects");
-});
+projectsRoutes.get("/", getAllProjectsController);
 
-projectRoutes.get("/", (req, res) => {
+projectsRoutes.post("/", (req, res) => {
   res.send("List of projects");
 });
 
-projectRoutes.get("/:id", (req, res) => {
+projectsRoutes.get("/:id", (req, res) => {
   res.send("get by id of projects");
 });
 
-projectRoutes.put("/:id", (req, res) => {
+projectsRoutes.put("/:id", (req, res) => {
   res.send("put by id of projects");
 });
 
-projectRoutes.delete("/:id", (req, res) => {
+projectsRoutes.delete("/:id", (req, res) => {
   res.send("delete by id of projects");
 });
 
-export default projectRoutes;
+export default projectsRoutes;

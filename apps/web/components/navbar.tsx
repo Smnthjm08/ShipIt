@@ -14,6 +14,7 @@ import Link from "next/link";
 import { LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ThemeToggle } from "./theme-toggle";
+import Logo from "./utils/logo";
 
 export function Navbar() {
   const { user, isAuthenticated } = useAuth();
@@ -29,10 +30,8 @@ export function Navbar() {
 
   return (
     <nav className="border-b">
-      <div className="flex h-14 items-center px-4 container mx-auto">
-        <Link href="/" className="font-bold text-xl">
-          ShipIt
-        </Link>
+      <div className="flex h-14 flex-row items-center px-4 container mx-auto">
+        <Logo />
 
         <div className="ml-auto flex items-center gap-4">
           <ThemeToggle />
