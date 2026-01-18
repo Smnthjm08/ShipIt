@@ -1,4 +1,4 @@
-import { prisma } from "@repo/db";
+import { prisma, Prisma } from "@repo/db";
 
 export class ProjectsService {
   async getProjects(userId: string) {
@@ -7,9 +7,13 @@ export class ProjectsService {
     });
   }
 
-  async getProjectById(userId: string, id: string) {
+  async getProjectById(
+    userId: string,
+    id: string,
+  ): Promise<Prisma.ProjectGetPayload<{ include: { deployments: true } }>> {
     const project = await prisma.project.findFirst({
       where: { id, userId },
+      include: { deployments: true },
     });
 
     if (!project) {
