@@ -3,6 +3,7 @@ import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
 import Link from "next/link";
 import type { AuthSession } from "@/types/session";
+import { getServerAuthenticationAxios } from "@/lib/axios-instance";
 
 export default async function HomePage() {
   const session = (await auth.api.getSession({
@@ -10,6 +11,12 @@ export default async function HomePage() {
   })) as AuthSession | null;
 
   console.log(">>", session);
+  
+  const axios = await getServerAuthenticationAxios();
+
+  const health = await axios.get("/projects");
+
+  console.log("hrelaht", health.data);
 
   if (session) {
     return (

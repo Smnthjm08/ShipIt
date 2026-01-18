@@ -15,6 +15,7 @@ import { LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ThemeToggle } from "./theme-toggle";
 import Logo from "./utils/logo";
+import { authClient } from "@repo/auth/client";
 
 export function Navbar() {
   const { user, isAuthenticated } = useAuth();
@@ -76,7 +77,7 @@ export function Navbar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-red-600">
+                <DropdownMenuItem className="cursor-pointer text-red-600" onClick={()=> authClient.signOut()}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
