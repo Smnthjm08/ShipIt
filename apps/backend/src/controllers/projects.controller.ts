@@ -37,10 +37,7 @@ export const createProjectController = async (req: any, res: any) => {
       req.user.id,
     );
 
-    await redisQueue.lPush(
-      "deployments",
-      JSON.stringify(newProject?.deployments?.[0]),
-    );
+    await redisQueue.lPush("deploymentId", newProject?.deployments?.[0]?.id);
 
     res.status(201).json({
       message: "Project created successfully",

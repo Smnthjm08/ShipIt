@@ -1,4 +1,4 @@
-import { prisma, Prisma } from "@repo/db";
+import { DeploymentStatus, prisma, Prisma } from "@repo/db";
 
 export class ProjectsService {
   async getProjects(userId: string) {
@@ -29,7 +29,7 @@ export class ProjectsService {
         userId,
         deployments: {
           create: {
-            status: "queued",
+            status: DeploymentStatus.QUEUED,
           },
         },
       },

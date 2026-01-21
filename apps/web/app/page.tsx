@@ -14,12 +14,11 @@ export default async function HomePage() {
     headers: await headers(),
   })) as AuthSession | null;
 
-  const axiosInstance = await getServerAxios();
-  const projects = await axiosInstance.get("/projects");
-
   if (session) {
+    const axiosInstance = await getServerAxios();
+    const projects = await axiosInstance.get("/projects");
     return (
-      <main className="flex flex-col justify-between py-6 px-12 gap-4 lg:px-24">
+      <main className="flex flex-1 flex-col py-6 px-12 gap-4 lg:px-24 md:px-16">
         <h1 className="text-2xl font-bold">Welcome, {session?.user?.name}!</h1>
 
         <div className="flex space-x-4">
@@ -47,7 +46,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen items-center justify-center gap-2">
+    <main className="flex flex-1 flex-col items-center justify-center gap-2 pt-20">
       <h1 className="font-extrabold text-xl">ShipIt</h1>
       <Button asChild>
         <Link href={"/connect-github"}>Connect Github</Link>

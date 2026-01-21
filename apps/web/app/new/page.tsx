@@ -6,7 +6,6 @@ import { getServerAxios } from "@/lib/axios-instance";
 export default async function NewProjectPage() {
   const axiosInstance = await getServerAxios();
   const projects = await axiosInstance.get("/new");
-  console.log("projects", projects);
   const data: [] = projects?.data?.data;
 
   return (

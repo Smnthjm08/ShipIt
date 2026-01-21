@@ -18,7 +18,7 @@ export default function ConnectGithubPage() {
   const [loading, setLoading] = useState(false);
 
   return (
-    <main className="flex items-center min-h-screen flex-row justify-center">
+    <main className="flex items-center flex-1 flex-row justify-center">
       <Card className="min-w-md text-center">
         <CardHeader>
           <CardTitle className="text-lg md:text-xl">Connect Github</CardTitle>

@@ -102,16 +102,17 @@ model Project {
 }
 
 enum DeploymentStatus {
-  queued
-  building
-  failed
-  completed
+   QUEUED
+   CLONING
+   BUILDING
+   FAILED
+   COMPLETED
 }
 
 model Deployment {
   id        String           @id @default(cuid())
   projectId String
-  status    DeploymentStatus @default(queued)
+  status    DeploymentStatus @default(QUEUED)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 

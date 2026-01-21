@@ -16,11 +16,15 @@
     "@repo/auth": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/eslint-config": "workspace:*",
+    "@repo/shared": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "tsx": "^4.21.0"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "simple-git": "^3.30.0"
+  }
 }

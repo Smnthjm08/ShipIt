@@ -37,7 +37,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="border-b">
+    <nav className="border-b dark:border-slate-600 border-slate-200">
       <div className="flex h-14 flex-row items-center px-4 container mx-auto">
         <Logo />
 
