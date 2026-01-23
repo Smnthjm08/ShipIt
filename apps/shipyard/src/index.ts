@@ -1,6 +1,7 @@
 import { redisQueue } from "@repo/shared";
 import { prisma } from "@repo/db";
 import { cloneRepo } from "./git/clone-repo";
+import { buildInContainer, } from "./build-in-container";
 
 async function startWorker() {
     if (!redisQueue.isOpen) {
@@ -40,6 +41,9 @@ async function startWorker() {
             console.log("Repo cloned successfully:", repoDir);
 
             // new docker container should be created for each deployment
+            await buildInContainer(deployment.id, repoDir);
+            console.log("Docker build successfull");
+
             // copy the deploymentId folder to the docker container
             // run the build commandin docker container
             // once built, the container should be stopped and removed

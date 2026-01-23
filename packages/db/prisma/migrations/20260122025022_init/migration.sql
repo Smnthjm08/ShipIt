@@ -1,11 +1,8 @@
-/*
-  Warnings:
+-- CreateEnum
+CREATE TYPE "Framework" AS ENUM ('NEXTJS', 'REACT', 'VITE', 'NODE', 'NONE');
 
-  - You are about to drop the `User` table. If the table is not empty, all the data it contains will be lost.
-
-*/
--- DropTable
-DROP TABLE "User";
+-- CreateEnum
+CREATE TYPE "DeploymentStatus" AS ENUM ('QUEUED', 'CLONING', 'BUILDING', 'FAILED', 'COMPLETED');
 
 -- CreateTable
 CREATE TABLE "user" (
@@ -65,6 +62,47 @@ CREATE TABLE "verification" (
     CONSTRAINT "verification_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "project" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "repoUrl" TEXT NOT NULL,
+    "owner" TEXT NOT NULL,
+    "repoName" TEXT NOT NULL,
+    "branch" TEXT NOT NULL DEFAULT 'main',
+    "framework" "Framework" DEFAULT 'NONE',
+    "buildCommand" TEXT,
+    "outputDir" TEXT,
+    "rootDir" TEXT DEFAULT './',
+    "installCommand" TEXT DEFAULT 'npm run install',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "project_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "deployment" (
+    "id" TEXT NOT NULL,
+    "projectId" TEXT NOT NULL,
+    "status" "DeploymentStatus" NOT NULL DEFAULT 'QUEUED',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "deployment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "deployment_log" (
+    "id" TEXT NOT NULL,
+    "deploymentId" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "deployment_log_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 
@@ -76,3 +114,12 @@ ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "project" ADD CONSTRAINT "project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "deployment" ADD CONSTRAINT "deployment_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "deployment_log" ADD CONSTRAINT "deployment_log_deploymentId_fkey" FOREIGN KEY ("deploymentId") REFERENCES "deployment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
