@@ -9,6 +9,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "outDir": "./dist",
+    "rootDir": "./src",
     "removeComments": true,
     "resolveJsonModule": true,
     "sourceMap": true,
