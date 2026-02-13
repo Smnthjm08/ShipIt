@@ -12,14 +12,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LogOut, Settings, User } from "lucide-react";
-import { useAuth } from "@/components/auth-provider";
 import { ThemeToggle } from "./theme-toggle";
 import Logo from "./utils/logo";
-import { authClient } from "@repo/auth/client";
+import { useSession, signOut } from "@repo/auth/client";
 import { useRouter } from "next/navigation";
 
 export function Navbar() {
-  const { user, isAuthenticated } = useAuth();
+  const { data: session } = useSession();
   const router = useRouter();
 
   const getInitials = (name: string) => {
@@ -31,9 +30,14 @@ export function Navbar() {
       .slice(0, 2);
   };
 
-  const handleSignOut = () => {
-    authClient.signOut();
-    router.push("/connect-github");
+  const handleSignOut = async () => {
+    await signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/");
+        },
+      },
+    });
   };
 
   return (
@@ -43,7 +47,7 @@ export function Navbar() {
 
         <div className="ml-auto flex items-center gap-4">
           <ThemeToggle />
-          {isAuthenticated && user ? (
+          {session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -52,10 +56,10 @@ export function Navbar() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={user.image || undefined}
-                      alt={user.name}
+                      src={session.user.image || undefined}
+                      alt={session.user.name}
                     />
-                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(session.user.name)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -63,10 +67,10 @@ export function Navbar() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {user.name}
+                      {session.user.name}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+                      {session.user.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
