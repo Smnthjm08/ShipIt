@@ -38,16 +38,18 @@ export default function ProjectsCard({ project }: ProjectsCardProps) {
             <CardTitle className="text-xl">{project.name}</CardTitle>
             <CardDescription className="flex items-center gap-1">
               <Github className="h-3 w-3" />
-              {project.owner}/{project.repoName}
+              {project.repoName}
             </CardDescription>
           </div>
           {project.framework && (
-            <Badge variant="secondary">{project.framework}</Badge>
+            <Badge className="bg-blue-200 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              {project.framework}
+            </Badge>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-1">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <GitBranch className="h-4 w-4" />
           <span>{project.branch}</span>
@@ -76,7 +78,7 @@ export default function ProjectsCard({ project }: ProjectsCardProps) {
         )}
       </CardContent>
 
-      <CardFooter className="flex gap-2">
+      <CardFooter className="flex gap-1">
         <Button asChild className="flex-1">
           <Link href={`/projects/${project.id}`}>View Project</Link>
         </Button>

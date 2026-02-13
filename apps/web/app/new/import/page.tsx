@@ -1,6 +1,6 @@
 "use client";
 
-import CreateNewProjectForm from "@/components/create-project-form";
+import CreateNewProjectForm from "@/components/forms/create-project-form";
 import { Suspense } from "react";
 
 export default function ImportPage() {

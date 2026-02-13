@@ -13,12 +13,13 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LogOut, Settings, User } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
-import Logo from "./utils/logo";
-import { useSession, signOut } from "@repo/auth/client";
+import Logo from "./logo";
+import { signOut } from "@repo/auth/client";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export function Navbar() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const router = useRouter();
 
   const getInitials = (name: string) => {
@@ -47,7 +48,7 @@ export function Navbar() {
 
         <div className="ml-auto flex items-center gap-4">
           <ThemeToggle />
-          {session?.user ? (
+          {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -56,10 +57,12 @@ export function Navbar() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={session.user.image || undefined}
-                      alt={session.user.name}
+                      src={user.image || undefined}
+                      alt={user.name}
                     />
-                    <AvatarFallback>{getInitials(session.user.name)}</AvatarFallback>
+                    <AvatarFallback>
+                      {getInitials(user.name)}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -67,10 +70,10 @@ export function Navbar() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {session.user.name}
+                      {user.name}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {session.user.email}
+                      {user.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>

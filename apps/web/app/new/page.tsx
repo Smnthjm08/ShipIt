@@ -1,4 +1,4 @@
-import RepoCard from "@/components/repo-card";
+import RepoCard from "@/components/cards/repo-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getServerAxios } from "@/lib/axios-instance";

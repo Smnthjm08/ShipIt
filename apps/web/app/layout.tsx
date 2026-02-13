@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { Navbar } from "@/components/navbar";
+import { Navbar } from "@/components/globals/navbar";
 import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
 import { AuthSession } from "@/types/session";
-import { AuthProvider } from "@/components/auth-provider";
+import { AuthProvider } from "@/components/providers/auth-provider";
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-sans" });
 
