@@ -60,9 +60,7 @@ export function Navbar() {
                       src={user.image || undefined}
                       alt={user.name}
                     />
-                    <AvatarFallback>
-                      {getInitials(user.name)}
-                    </AvatarFallback>
+                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>

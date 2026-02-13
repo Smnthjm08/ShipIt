@@ -67,19 +67,23 @@ export default function CreateNewProjectForm() {
     try {
       e.preventDefault();
 
-      const response = await clientAxios.post("/projects", {
+      const response = await clientAxios.post("/new", {
         name: repo,
         repoUrl: repoUrl,
+        project: repo, // controller expects `project`, form has `repo`
         owner: owner,
-        repoName: repo,
         branch: branch,
         framework: framework,
         buildCommand: buildCommand,
+        installCommand: (e.target as any).installCommand.value,
+        rootDir: (e.target as any).rootDir.value,
       });
 
       if (response.status === 201) {
         toast.success("Project created successfully");
-        router.push(`/projects/${response.data.data.id}`);
+        const projectId = response.data.data.id;
+        const deploymentId = response.data.res.id;
+        router.push(`/projects/${projectId}/deployments/${deploymentId}`);
       }
     } catch (error) {
       console.log("Error creating project", error);

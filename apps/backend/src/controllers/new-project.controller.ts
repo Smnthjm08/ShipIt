@@ -21,10 +21,10 @@ export const newProjectController = async (req: Request, res: Response) => {
 
     const octokit = new Octokit({ auth: account?.accessToken });
 
-    const query = searchParams?.query;
+    const query = searchParams?.q;
     const search = typeof query === "string" ? query.trim() : "";
     const page = Number(searchParams?.page ?? "1");
-    const per_page = Number(searchParams?.per_page ?? "10");
+    const per_page = Number(searchParams?.per_page ?? "5");
 
     let repos: unknown[] = [];
 
@@ -93,5 +93,53 @@ export const newProjectController = async (req: Request, res: Response) => {
       data: null,
       error: error instanceof Error ? error.message : "Unknown error",
     });
+  }
+};
+
+import { redisQueue } from "@repo/shared";
+
+export const createProjectController = async (req: Request, res: Response) => {
+  try {
+    const { name, repoUrl, project, owner, branch, framework, buildCommand } =
+      req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const newProject = await prisma.project.create({
+      data: {
+        name,
+        repoUrl,
+        repoName: project,
+        owner,
+        branch,
+        framework,
+        buildCommand,
+        userId,
+        deployments: {
+          create: {
+            status: "QUEUED",
+          },
+        },
+      },
+      include: {
+        deployments: true,
+      },
+    });
+
+    const deploymentId = newProject.deployments[0].id;
+    await redisQueue.lPush("deploymentId", deploymentId);
+
+    res.status(201).json({
+      message: "Project created successfully",
+      data: newProject,
+      error: null,
+      res: newProject.deployments[0],
+    });
+  } catch (error) {
+    console.error("Error creating project:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

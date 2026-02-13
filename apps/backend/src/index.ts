@@ -12,7 +12,8 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "@repo/auth/server";
 
 import authMiddleware from "./middlewares/auth.middleware";
-import { newProjectController } from "./controllers/new-project.controller";
+// ... (existing imports)
+
 import { connectRedis } from "@repo/shared";
 
 connectRedis().catch((err) =>
@@ -50,7 +51,13 @@ v1Router.get("/health", (req: Request, res: Response) => {
   res.json({ status: "OK", message: "healthy!" });
 });
 
-v1Router.use("/new", authMiddleware, newProjectController);
+import {
+  newProjectController,
+  createProjectController,
+} from "./controllers/new-project.controller";
+
+v1Router.get("/new", authMiddleware, newProjectController);
+v1Router.post("/new", authMiddleware, createProjectController);
 // v1Router.use("/dashboard", authMiddleware, dashboardRoutes);
 
 app.use((req: Request, res: Response) => {
