@@ -80,6 +80,7 @@ enum Framework {
 model Project {
   id             String     @id @default(cuid())
   name           String
+  description    String?
   repoUrl        String
   owner          String
   repoName       String
@@ -89,6 +90,7 @@ model Project {
   outputDir      String?
   rootDir        String?    @default("./")
   installCommand String?    @default("npm install")
+  isDeleted      Boolean    @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,6 +117,7 @@ model Deployment {
   status    DeploymentStatus @default(QUEUED)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+  isDeleted Boolean          @default(false)
 
   project Project         @relation(fields: [projectId], references: [id])
   logs    DeploymentLog[]
@@ -127,6 +130,7 @@ model DeploymentLog {
   deploymentId String
   message      String
   timestamp    DateTime @default(now())
+  isDeleted    Boolean  @default(false)
 
   deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 

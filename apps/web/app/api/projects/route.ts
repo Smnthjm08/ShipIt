@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
 
     const where: Prisma.ProjectWhereInput = {
       userId: session.user.id,
+      isDeleted: false,
       ...(search && {
         name: {
           contains: search,
