@@ -41,7 +41,15 @@ async function startWorker() {
       console.log("Repo cloned successfully:", repoDir);
 
       // new docker container should be created for each deployment
-      await buildInContainer(deployment.id, repoDir);
+      await buildInContainer(
+        deployment.id,
+        repoDir,
+        deployment.project.id,
+        deployment.project.buildCommand || "",
+        deployment.project.installCommand || "",
+        deployment.project.rootDir || "",
+        deployment.project.outputDir || "",
+      );
       console.log("Docker build successfull");
 
       // copy the deploymentId folder to the docker container

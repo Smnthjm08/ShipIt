@@ -145,7 +145,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   <SelectValue placeholder={limit.toString()} />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[6, 12, 24, 48].map((size) => (
+                  {[6, 10, 14, 20].map((size) => (
                     <SelectItem key={size} value={size.toString()}>
                       {size}
                     </SelectItem>

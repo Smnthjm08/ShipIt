@@ -88,7 +88,7 @@ model Project {
   buildCommand   String?
   outputDir      String?
   rootDir        String?    @default("./")
-  installCommand String?    @default("npm run install")
+  installCommand String?    @default("npm install")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -102,11 +102,11 @@ model Project {
 }
 
 enum DeploymentStatus {
-   QUEUED
-   CLONING
-   BUILDING
-   FAILED
-   COMPLETED
+  QUEUED
+  CLONING
+  BUILDING
+  FAILED
+  COMPLETED
 }
 
 model Deployment {

@@ -77,6 +77,7 @@ export default function CreateNewProjectForm() {
         buildCommand: buildCommand,
         installCommand: (e.target as any).installCommand.value,
         rootDir: (e.target as any).rootDir.value,
+        outputDir: (e.target as any).outputDir.value,
       });
 
       if (response.status === 201) {
@@ -173,7 +174,7 @@ export default function CreateNewProjectForm() {
                 <FieldLabel>Install Command</FieldLabel>
                 <Input
                   name="installCommand"
-                  defaultValue="npm run install"
+                  defaultValue="npm install"
                   placeholder="npm install"
                 />
               </Field>
@@ -183,6 +184,14 @@ export default function CreateNewProjectForm() {
                 <Input name="rootDir" defaultValue="./" placeholder="./" />
                 <FieldDescription>
                   Path to project root relative to repository.
+                </FieldDescription>
+              </Field>
+
+              <Field>
+                <FieldLabel>Output Directory</FieldLabel>
+                <Input name="outputDir" placeholder="dist" />
+                <FieldDescription>
+                  Path to build output directory (e.g. dist, .next).
                 </FieldDescription>
               </Field>
             </FieldGroup>

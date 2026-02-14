@@ -100,8 +100,16 @@ import { redisQueue } from "@repo/shared";
 
 export const createProjectController = async (req: Request, res: Response) => {
   try {
-    const { name, repoUrl, project, owner, branch, framework, buildCommand } =
-      req.body;
+    const {
+      name,
+      repoUrl,
+      project,
+      owner,
+      branch,
+      framework,
+      buildCommand,
+      outputDir,
+    } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -117,6 +125,7 @@ export const createProjectController = async (req: Request, res: Response) => {
         branch,
         framework,
         buildCommand,
+        outputDir,
         userId,
         deployments: {
           create: {
