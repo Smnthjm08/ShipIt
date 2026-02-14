@@ -98,7 +98,7 @@ export async function DELETE(
   }
 }
 
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ projectId: string }> },
 ) {

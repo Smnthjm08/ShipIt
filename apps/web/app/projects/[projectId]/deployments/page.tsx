@@ -1,9 +1,47 @@
-"use client";
+import { notFound } from "next/navigation";
+import { prisma } from "@repo/db";
+import { auth } from "@repo/auth/server";
+import { headers } from "next/headers";
+import { DeploymentTable } from "./deployment-table";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+interface ProjectDeploymentsPageProps {
+  params: Promise<{ projectId: string }>;
+}
 
-export default function ProjectDeploymentsPage() {
+export default async function ProjectDeploymentsPage({
+  params,
+}: ProjectDeploymentsPageProps) {
+  const { projectId } = await params;
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user?.id) {
+    return notFound();
+  }
+
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      userId: session.user.id,
+      isDeleted: false,
+    },
+  });
+
+  if (!project) {
+    return notFound();
+  }
+
+  const deployments = await prisma.deployment.findMany({
+    where: {
+      projectId: projectId,
+      isDeleted: false,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -13,16 +51,7 @@ export default function ProjectDeploymentsPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Deployment History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex h-32 items-center justify-center text-muted-foreground">
-            <p>Deployment history feature coming soon...</p>
-          </div>
-        </CardContent>
-      </Card>
+      <DeploymentTable deployments={deployments} />
     </div>
   );
 }

@@ -1,11 +1,10 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { Loader2, Github, ExternalLink, Terminal } from "lucide-react";
+import { notFound } from "next/navigation";
+import { prisma } from "@repo/db";
+import { auth } from "@repo/auth/server";
+import { headers } from "next/headers";
+import { ExternalLink, Github, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -13,68 +12,39 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
-interface Deployment {
-  id: string;
-  status: string;
-  createdAt: string;
+interface ProjectPageProps {
+  params: Promise<{ projectId: string }>;
 }
 
-interface Project {
-  id: string;
-  name: string;
-  repoUrl: string;
-  packageManager: string;
-  installCommand: string;
-  buildCommand: string;
-  outputDir: string;
-  framework: string;
-  deployments: Deployment[];
-}
+export default async function ProjectPage({ params }: ProjectPageProps) {
+  const { projectId } = await params;
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-export default function ProjectPage() {
-  const { projectId } = useParams();
-  const [project, setProject] = useState<Project | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        setIsLoading(true);
-        const response = await axios.get(`/api/projects/${projectId}`);
-        setProject(response.data.data);
-      } catch (err) {
-        console.error("Error fetching project:", err);
-        setError("Failed to load project details");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (projectId) {
-      fetchProject();
-    }
-  }, [projectId]);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (!session?.user?.id) {
+    return notFound();
   }
 
-  if (error || !project) {
-    return (
-      <div className="flex h-96 flex-col items-center justify-center gap-4">
-        <p className="text-destructive">{error || "Project not found"}</p>
-        <Button variant="outline" asChild>
-          <Link href="/">Back to Dashboard</Link>
-        </Button>
-      </div>
-    );
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      userId: session.user.id,
+      isDeleted: false,
+    },
+    include: {
+      deployments: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      },
+    },
+  });
+
+  if (!project) {
+    return notFound();
   }
 
   const latestDeployment = project.deployments[0];
@@ -120,7 +90,9 @@ export default function ProjectPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Framework</span>
-              <Badge variant="secondary">{project.framework}</Badge>
+              <Badge variant="secondary">
+                {project.framework || "Unknown"}
+              </Badge>
             </div>
             <div className="space-y-1">
               <span className="text-sm font-medium">Build Command</span>
@@ -175,7 +147,7 @@ export default function ProjectPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Created</span>
                   <span className="text-sm text-muted-foreground">
-                    {new Date(latestDeployment.createdAt).toLocaleString()}
+                    {latestDeployment.createdAt.toLocaleString()}
                   </span>
                 </div>
               </div>
