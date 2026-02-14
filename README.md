@@ -1,6 +1,6 @@
 # 🚀 ShipIt
 
-ShipIt is a self-hosted deployment platform inspired by Vercel/Netlify.
+ShipIt is a self-hosted deployment platform inspired by Vercel.
 Connect your GitHub repo, trigger a build, and get a live URL — powered by Docker workers, Redis queues, and S3 hosting.
 
 ---
@@ -21,7 +21,7 @@ Connect your GitHub repo, trigger a build, and get a live URL — powered by Doc
 
 The diagram below represents the current production architecture of ShipIt:
 
-<img src="./images/architecture.svg" alt="ShipIt Architecture" width="80%" />
+<img src="./docs/architecture.svg" alt="ShipIt Architecture" width="80%" />
 
 > Flow: GitHub OAuth → Repo selection → Redis queue → Docker workers → S3 → Nginx proxy → Live URL
 
@@ -38,13 +38,3 @@ ShipIt is built to explore real-world deployment system design:
 - subdomain routing
 
 This project focuses on **infra + system design fundamentals** behind modern deployment platforms.
-
----
-
-## 📜 License
-
-MIT
-
----
-
-If you want, I can also give you a **1–2 line project description** for your GitHub repo tagline (the small text under repo name).
