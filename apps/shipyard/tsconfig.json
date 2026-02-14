@@ -16,6 +16,6 @@
     "target": "ES2022",
     "skipLibCheck": true,
   },
-  "include": ["src/**/*", "packages/*", "emails/**/*"],
+  "include": ["src/**/*", "packages/*"],
   "exclude": ["node_modules", "dist"]
 }
