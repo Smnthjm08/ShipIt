@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Settings, List, Loader2 } from "lucide-react";
+import { LayoutDashboard, Settings, List } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,

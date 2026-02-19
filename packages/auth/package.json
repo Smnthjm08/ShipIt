@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
@@ -13,12 +14,13 @@
   "devDependencies": {
     "@repo/db": "workspace:*",
     "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*"
+    "@repo/typescript-config": "workspace:*",
+    "eslint": "^9.39.1"
   },
   "dependencies": {
     "better-auth": "^1.4.10"
   },
-    "exports": {
+  "exports": {
     "./server": "./src/auth.ts",
     "./client": "./src/client.ts"
   }

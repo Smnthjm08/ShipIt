@@ -17,6 +17,7 @@
     "@repo/db": "workspace:*",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "eslint": "^9.39.1",
     "tsx": "^4.21.0"
   },
   "keywords": [],

@@ -8,7 +8,14 @@
     "GITHUB_CLIENT_ID",
     "GITHUB_CLIENT_SECRET",
     "NODE_ENV",
-    "NEXT_PUBLIC_API_BASE_URL"
+    "NEXT_PUBLIC_API_BASE_URL",
+    "AWS_ACCESS_KEY",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_ENDPOINT",
+    "AWS_BUCKET_NAME",
+    "REDIS_URL",
+    "BASE_URL",
+    "PORT"
   ],
   "tasks": {
     "build": {

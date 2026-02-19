@@ -19,6 +19,7 @@
     "@repo/shared": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/dockerode": "^4.0.1",
+    "eslint": "^9.39.1",
     "tsx": "^4.21.0"
   },
   "keywords": [],

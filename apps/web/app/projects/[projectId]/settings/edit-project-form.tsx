@@ -58,7 +58,7 @@ export function EditProjectForm({
         <CardHeader>
           <CardTitle>General Settings</CardTitle>
           <CardDescription>
-            Configure your project's general information
+            Configure your project&apos;s general information
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -72,7 +72,7 @@ export function EditProjectForm({
               required
             />
             <p className="text-sm text-muted-foreground">
-              This is your project's visible name within ShipIt.
+              This is your project&apos;s visible name within ShipIt.
             </p>
           </div>
           <div className="space-y-2">

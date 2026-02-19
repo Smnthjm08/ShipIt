@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
@@ -32,6 +32,7 @@
     "@repo/db": "workspace:*",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "eslint": "^9.39.1",
     "@tailwindcss/postcss": "^4",
     "@types/axios": "^0.14.4",
     "@types/node": "^20",
