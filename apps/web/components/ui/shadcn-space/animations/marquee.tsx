@@ -1,7 +1,7 @@
 import { ComponentPropsWithoutRef } from "react";
- 
+
 import { cn } from "@/lib/utils";
- 
+
 interface MarqueeProps extends ComponentPropsWithoutRef<"div"> {
   className?: string;
   /**
@@ -29,7 +29,7 @@ interface MarqueeProps extends ComponentPropsWithoutRef<"div"> {
    */
   repeat?: number;
 }
- 
+
 export function Marquee({
   className,
   reverse = false,

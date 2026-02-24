@@ -1,8 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from "@/components/ui/sheet";
-import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { Icon } from "@iconify/react";
 import Logo from "@/assets/logo/logo";
@@ -22,7 +33,12 @@ type HeaderProps = {
 };
 
 const CollaborateButton = ({ className }: { className?: string }) => (
-  <Button className={cn("relative text-sm font-medium rounded-full h-10 p-1 ps-4 pe-12 group transition-all duration-500 hover:ps-12 hover:pe-4 w-fit overflow-hidden", className)}>
+  <Button
+    className={cn(
+      "relative text-sm font-medium rounded-full h-10 p-1 ps-4 pe-12 group transition-all duration-500 hover:ps-12 hover:pe-4 w-fit overflow-hidden",
+      className,
+    )}
+  >
     <span className="relative z-10 transition-all duration-500">
       Let's Collaborate
     </span>
@@ -91,7 +107,10 @@ const Header = ({ navigationData, className }: HeaderProps) => {
                 <NavigationMenuItem key={navItem.title}>
                   <NavigationMenuLink
                     href={navItem.href}
-                    className={cn("px-2 lg:px-4 py-2 text-sm font-medium rounded-full text-muted-foreground hover:text-foreground hover:bg-background outline outline-transparent hover:outline-border hover:shadow-xs transition tracking-normal", navItem.isActive ? "bg-background text-foreground" : "")}
+                    className={cn(
+                      "px-2 lg:px-4 py-2 text-sm font-medium rounded-full text-muted-foreground hover:text-foreground hover:bg-background outline outline-transparent hover:outline-border hover:shadow-xs transition tracking-normal",
+                      navItem.isActive ? "bg-background text-foreground" : "",
+                    )}
                   >
                     {navItem.title}
                   </NavigationMenuLink>
