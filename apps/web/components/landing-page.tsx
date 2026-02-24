@@ -1,13 +1,15 @@
-import Link from "next/link";
-import { Button } from "./ui/button";
+import Feature02 from "./landing/feature-section";
+import AgencyHeroSection from "./ui/shadcn-space/hero";
+import CTA from "./landing/cta";
+import Footer from "./landing/footer";
 
 export default function LandingPage() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-2 pt-20">
-      <h1 className="font-extrabold text-5xl">ShipIt</h1>
-      <Button asChild>
-        <Link href={"/connect-github"}>Connect Github</Link>
-      </Button>
-    </main>
+    <>
+      <AgencyHeroSection />
+      <Feature02 />
+      <CTA />
+      <Footer />
+    </>
   );
 }

@@ -55,7 +55,7 @@ export default async function RootLayout({
           >
             <AuthProvider user={session?.user || null}>
               <div className="flex flex-col min-h-screen">
-                <Navbar />
+                {/* <Navbar /> */}
                 {children}
               </div>
               <Toaster />
