@@ -142,7 +142,10 @@ export const buildInContainer = async (
   const timer = setTimeout(() => {
     timedOut = true;
     console.error(`Build exceeded ${BUILD_TIMEOUT_MS}ms — stopping container`);
-    void persistLog(deploymentId, `Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`);
+    void persistLog(
+      deploymentId,
+      `Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`,
+    );
     // AutoRemove cleans up once stopped; fall back to kill if stop fails.
     container.stop({ t: 0 }).catch(() => container.kill().catch(() => {}));
   }, BUILD_TIMEOUT_MS);

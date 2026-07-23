@@ -31,8 +31,8 @@ below is an additive fix — no rewrite needed.
 ## 🟢 P3 — Missing product surface
 
 - [~] **Build logs go nowhere.** ✅ Logs are now **persisted** to the `DeploymentLog` table from
-      the build stream. ⏳ Still TODO: **live streaming** over `ws-server` (still a stub) and an
-      API/UI to read them.
+  the build stream. ⏳ Still TODO: **live streaming** over `ws-server` (still a stub) and an
+  API/UI to read them.
 - [ ] **Backend routes barely wired.** Only `GET/POST /api/v1/new` exist
       (`backend/src/index.ts:56`). `DeploymentService` written but never mounted. → Add
       list-projects, deployment-status, redeploy, delete endpoints.

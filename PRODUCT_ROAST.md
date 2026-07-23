@@ -4,14 +4,14 @@
 
 ## 1. Executive Summary
 
-| Dimension | Score | Notes |
-|---|---|---|
-| **Overall Engineering** | 4.5 / 10 | Solid concept, immature execution |
-| **Production Readiness** | 2 / 10 | Multiple critical blockers |
-| **Maintainability** | 5 / 10 | Clean structure, weak contracts |
-| **Scalability** | 3 / 10 | Single-instance everything |
-| **Security** | 2.5 / 10 | Active command injection vector |
-| **Developer Experience** | 4 / 10 | Good build system, no tests or CI |
+| Dimension                | Score    | Notes                             |
+| ------------------------ | -------- | --------------------------------- |
+| **Overall Engineering**  | 4.5 / 10 | Solid concept, immature execution |
+| **Production Readiness** | 2 / 10   | Multiple critical blockers        |
+| **Maintainability**      | 5 / 10   | Clean structure, weak contracts   |
+| **Scalability**          | 3 / 10   | Single-instance everything        |
+| **Security**             | 2.5 / 10 | Active command injection vector   |
+| **Developer Experience** | 4 / 10   | Good build system, no tests or CI |
 
 ShipIt demonstrates thoughtful architectural instincts — Redis-backed queue, isolated Docker builds, S3 artifact storage, and a clean monorepo layout. But it is not production-ready. There is an active command-injection vulnerability, no input validation library, no tests, no CI, no structured logging, no rate limiting, and a hardcoded localhost URL baked into a UI component. The gap between the architecture's ambition and the execution maturity is the defining finding.
 
@@ -73,28 +73,28 @@ ShipIt demonstrates thoughtful architectural instincts — Redis-backed queue, i
 
 ## 4. Top 20 Improvements (Ranked by Impact vs. Effort)
 
-| # | Improvement | Severity | Effort | When |
-|---|---|---|---|---|
-| 1 | Fix command injection — use array exec form, never shell interpolation | Critical | Low | Before MVP |
-| 2 | Add `zod` validation on all API request bodies | Critical | Medium | Before MVP |
-| 3 | Fix path traversal in `outputDir` — strip `..` components, resolve inside `buildPath` | Critical | Low | Before MVP |
-| 4 | Replace token-in-URL git auth with credential helper or `GIT_ASKPASS` env var | Critical | Medium | Before MVP |
-| 5 | Add database indexes: `userId` on `Project`, `projectId` on `Deployment`, `deploymentId` on `DeploymentLog` | High | Low | Before MVP |
-| 6 | Make deployment URL configurable — replace hardcoded `localhost:8001` with env var `BASE_URL` | High | Low | Before MVP |
-| 7 | Add `Docker Compose` for local dev (Postgres, Redis, MinIO) | High | Medium | Before MVP |
-| 8 | Add proper TypeScript types to `@repo/shared` Redis client — eliminate `any` | High | Low | Before MVP |
-| 9 | Add `helmet` and fix `methods: ["*"]` in CORS | High | Low | Before MVP |
-| 10 | Validate all required env vars at process startup (backend and shipyard) | High | Low | Before MVP |
-| 11 | Add structured logging with Pino — include `deploymentId` and request ID in context | High | Medium | Before Production |
-| 12 | Add rate limiting middleware (express-rate-limit) on project creation and deployment trigger | High | Low | Before Production |
-| 13 | Add GitHub Actions CI — lint, type-check, build on every push | High | Medium | Before Production |
-| 14 | Add deployment size limits and S3 upload parallelism (`Promise.all`) | Medium | Low | Before Production |
-| 15 | Implement `ws-server` for real-time build log streaming | Medium | High | Before Production |
-| 16 | Add integration tests for the deployment pipeline (happy path + failure path) | Medium | High | Before Production |
-| 17 | Add AWS region to `.env.example` — remove hardcoded `ap-south-1` | Medium | Low | Before Production |
-| 18 | Add dead-letter queue for failed deployments — retry or alert on stale QUEUED rows | Medium | Medium | Before Production |
-| 19 | Add S3 lifecycle rules to expire artifacts from deleted deployments | Medium | Low | After Production |
-| 20 | Add Prometheus metrics endpoint or OpenTelemetry instrumentation to backend and shipyard | Low | High | After Production |
+| #   | Improvement                                                                                                 | Severity | Effort | When              |
+| --- | ----------------------------------------------------------------------------------------------------------- | -------- | ------ | ----------------- |
+| 1   | Fix command injection — use array exec form, never shell interpolation                                      | Critical | Low    | Before MVP        |
+| 2   | Add `zod` validation on all API request bodies                                                              | Critical | Medium | Before MVP        |
+| 3   | Fix path traversal in `outputDir` — strip `..` components, resolve inside `buildPath`                       | Critical | Low    | Before MVP        |
+| 4   | Replace token-in-URL git auth with credential helper or `GIT_ASKPASS` env var                               | Critical | Medium | Before MVP        |
+| 5   | Add database indexes: `userId` on `Project`, `projectId` on `Deployment`, `deploymentId` on `DeploymentLog` | High     | Low    | Before MVP        |
+| 6   | Make deployment URL configurable — replace hardcoded `localhost:8001` with env var `BASE_URL`               | High     | Low    | Before MVP        |
+| 7   | Add `Docker Compose` for local dev (Postgres, Redis, MinIO)                                                 | High     | Medium | Before MVP        |
+| 8   | Add proper TypeScript types to `@repo/shared` Redis client — eliminate `any`                                | High     | Low    | Before MVP        |
+| 9   | Add `helmet` and fix `methods: ["*"]` in CORS                                                               | High     | Low    | Before MVP        |
+| 10  | Validate all required env vars at process startup (backend and shipyard)                                    | High     | Low    | Before MVP        |
+| 11  | Add structured logging with Pino — include `deploymentId` and request ID in context                         | High     | Medium | Before Production |
+| 12  | Add rate limiting middleware (express-rate-limit) on project creation and deployment trigger                | High     | Low    | Before Production |
+| 13  | Add GitHub Actions CI — lint, type-check, build on every push                                               | High     | Medium | Before Production |
+| 14  | Add deployment size limits and S3 upload parallelism (`Promise.all`)                                        | Medium   | Low    | Before Production |
+| 15  | Implement `ws-server` for real-time build log streaming                                                     | Medium   | High   | Before Production |
+| 16  | Add integration tests for the deployment pipeline (happy path + failure path)                               | Medium   | High   | Before Production |
+| 17  | Add AWS region to `.env.example` — remove hardcoded `ap-south-1`                                            | Medium   | Low    | Before Production |
+| 18  | Add dead-letter queue for failed deployments — retry or alert on stale QUEUED rows                          | Medium   | Medium | Before Production |
+| 19  | Add S3 lifecycle rules to expire artifacts from deleted deployments                                         | Medium   | Low    | After Production  |
+| 20  | Add Prometheus metrics endpoint or OpenTelemetry instrumentation to backend and shipyard                    | Low      | High   | After Production  |
 
 ---
 

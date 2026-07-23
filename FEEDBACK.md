@@ -3,123 +3,127 @@
 1. Executive Summary
 
 ┌──────────────────────┬──────────┬───────────────────────────────────┐
-│      Dimension       │  Score   │               Notes               │
+│ Dimension │ Score │ Notes │
 ├──────────────────────┼──────────┼───────────────────────────────────┤
-│ Overall Engineering  │ 4.5 / 10 │ Solid concept, immature execution │
+│ Overall Engineering │ 4.5 / 10 │ Solid concept, immature execution │
 ├──────────────────────┼──────────┼───────────────────────────────────┤
-│ Production Readiness │ 2 / 10   │ Multiple critical blockers        │
+│ Production Readiness │ 2 / 10 │ Multiple critical blockers │
 ├──────────────────────┼──────────┼───────────────────────────────────┤
-│ Maintainability      │ 5 / 10   │ Clean structure, weak contracts   │
+│ Maintainability │ 5 / 10 │ Clean structure, weak contracts │
 ├──────────────────────┼──────────┼───────────────────────────────────┤
-│ Scalability          │ 3 / 10   │ Single-instance everything        │
+│ Scalability │ 3 / 10 │ Single-instance everything │
 ├──────────────────────┼──────────┼───────────────────────────────────┤
-│ Security             │ 2.5 / 10 │ Active command injection vector   │
+│ Security │ 2.5 / 10 │ Active command injection vector │
 ├──────────────────────┼──────────┼───────────────────────────────────┤
-│ Developer Experience │ 4 / 10   │ Good build system, no tests or CI │
+│ Developer Experience │ 4 / 10 │ Good build system, no tests or CI │
 └──────────────────────┴──────────┴───────────────────────────────────┘
 
 ShipIt demonstrates thoughtful architectural instincts — Redis-backed queue, isolated Docker builds, S3 artifact storage, and a clean monorepo layout. But it is not production-ready. There is an active command-injection vulnerability, no input validation library, no tests, no CI, no structured logging, no rate limiting, and a hardcoded localhost URL baked into a UI component. The gap between the architecture's ambition and the execution maturity is the defining finding.
 
 ---
+
 2. Strengths
 
 1. Architectural clarity. The deployment pipeline (GitHub → Redis queue → Docker build → S3 → subdomain proxy) maps cleanly to real infrastructure. The flow is understandable in a single read of shipyard/src/index.ts.
 
-2. Monorepo discipline. Turborepo is configured correctly. globalEnv, dependsOn, and persistent task flags are all used appropriately. The postinstall Prisma generate hook prevents the most common new-checkout breakage.
+1. Monorepo discipline. Turborepo is configured correctly. globalEnv, dependsOn, and persistent task flags are all used appropriately. The postinstall Prisma generate hook prevents the most common new-checkout breakage.
 
-3. Shared package boundaries. @repo/db, @repo/auth, and @repo/shared draw sensible dependency lines. The exports map on each package prevents accidental internal imports.
+1. Shared package boundaries. @repo/db, @repo/auth, and @repo/shared draw sensible dependency lines. The exports map on each package prevents accidental internal imports.
 
-4. Better-Auth integration. Using better-auth for GitHub OAuth is a good choice. The repo scope on the GitHub strategy so the access token can clone private repos is a deliberate, correct decision. Auth middleware is a first-class concept, not an afterthought.
+1. Better-Auth integration. Using better-auth for GitHub OAuth is a good choice. The repo scope on the GitHub strategy so the access token can clone private repos is a deliberate, correct decision. Auth middleware is a first-class concept, not an afterthought.
 
-5. Soft-delete consistency. All three mutable models (Project, Deployment, DeploymentLog) have isDeleted flags, and query sites consistently filter them — the pattern is applied uniformly.
+1. Soft-delete consistency. All three mutable models (Project, Deployment, DeploymentLog) have isDeleted flags, and query sites consistently filter them — the pattern is applied uniformly.
 
-6. Docker build isolation. Running user code in a container with AutoRemove: true and a volume bind is the right primitive. The package manager detection (pnpm/yarn/npm sniffing) is a thoughtful UX detail.
+1. Docker build isolation. Running user code in a container with AutoRemove: true and a volume bind is the right primitive. The package manager detection (pnpm/yarn/npm sniffing) is a thoughtful UX detail.
 
-7. SPA routing in proxy. The index.html fallback for unknown paths is the correct behaviour for static SPA hosting and was not accidentally omitted.
+1. SPA routing in proxy. The index.html fallback for unknown paths is the correct behaviour for static SPA hosting and was not accidentally omitted.
 
-8. Frontend tech choices. Next.js App Router, React 19, Tailwind v4, shadcn/ui, and Framer Motion are current and appropriate. The axios-instance.ts env var guard (throw new Error(...) at module load time) is the right pattern and should be followed everywhere.
+1. Frontend tech choices. Next.js App Router, React 19, Tailwind v4, shadcn/ui, and Framer Motion are current and appropriate. The axios-instance.ts env var guard (throw new Error(...) at module load time) is the right pattern and should be followed everywhere.
 
 ---
+
 3. Weaknesses
 
 1. Active command injection. User-supplied buildCommand and installCommand are interpolated into a shell string passed to /bin/sh -c. This is a pre-authentication RCE vector in anything that exposes the deployment API.
 
-2. Zero tests. No unit, integration, or end-to-end tests exist anywhere in the repository. A build system that runs untested code in Docker containers has no safety net.
+1. Zero tests. No unit, integration, or end-to-end tests exist anywhere in the repository. A build system that runs untested code in Docker containers has no safety net.
 
-3. No CI/CD pipeline. There is no .github/workflows/ directory. Every push deploys nothing and validates nothing automatically.
+1. No CI/CD pipeline. There is no .github/workflows/ directory. Every push deploys nothing and validates nothing automatically.
 
-4. Hardcoded localhost:8001 in UI. deployment-table.tsx:118 constructs deployment URLs as http://${deployment.id}.localhost:8001. This link does not work in production and cannot be configured.
+1. Hardcoded localhost:8001 in UI. deployment-table.tsx:118 constructs deployment URLs as http://${deployment.id}.localhost:8001. This link does not work in production and cannot be configured.
 
-5. GitHub token exposed in git URLs. clone-repo.ts embeds the OAuth token in the repository URL as https://oauth2:<token>@github.com/.... This token can appear in git error messages, stack traces, and process listings.
+1. GitHub token exposed in git URLs. clone-repo.ts embeds the OAuth token in the repository URL as https://oauth2:<token>@github.com/.... This token can appear in git error messages, stack traces, and process listings.
 
-6. No input validation library. Request bodies are destructured directly from req.body with no schema validation. zod, joi, or similar is entirely absent from all package.json files.
+1. No input validation library. Request bodies are destructured directly from req.body with no schema validation. zod, joi, or similar is entirely absent from all package.json files.
 
-7. Path traversal via outputDir. User-supplied outputDir is joined with path.join(buildPath, outputDir) in build-in-container.ts without sanitization. A value of ../../etc traverses outside the build directory.
+1. Path traversal via outputDir. User-supplied outputDir is joined with path.join(buildPath, outputDir) in build-in-container.ts without sanitization. A value of ../../etc traverses outside the build directory.
 
-8. any types in Redis client. packages/shared/src/redis/client.ts exports RedisClient = any and redis: any. This defeats TypeScript across every consumer of the queue.
+1. any types in Redis client. packages/shared/src/redis/client.ts exports RedisClient = any and redis: any. This defeats TypeScript across every consumer of the queue.
 
-9. No structured logging. All services use raw console.log / console.error. There is no log level, no correlation ID, no deployment ID in context, and no log aggregation path.
+1. No structured logging. All services use raw console.log / console.error. There is no log level, no correlation ID, no deployment ID in context, and no log aggregation path.
 
-10. No database indexes. The Prisma schema has no @@index declarations. The most common queries — projects by userId, deployments by projectId, logs by deploymentId — all perform full-table scans.
+1. No database indexes. The Prisma schema has no @@index declarations. The most common queries — projects by userId, deployments by projectId, logs by deploymentId — all perform full-table scans.
 
-11. Single Redis instance, no failure handling. Backend and shipyard silently continue if Redis connection fails at startup. Queue operations on a disconnected client produce unhandled rejections with no dead-letter queue.
+1. Single Redis instance, no failure handling. Backend and shipyard silently continue if Redis connection fails at startup. Queue operations on a disconnected client produce unhandled rejections with no dead-letter queue.
 
-12. No rate limiting. GitHub repo search, project creation, and deployment trigger endpoints have no throttling. All are reachable by any authenticated user with no per-user limits.
+1. No rate limiting. GitHub repo search, project creation, and deployment trigger endpoints have no throttling. All are reachable by any authenticated user with no per-user limits.
 
-13. CORS misconfigured. methods: ["*"] in the Express CORS config allows DELETE, TRACE, and CONNECT from the frontend origin. Should whitelist specific methods.
+1. CORS misconfigured. methods: ["*"] in the Express CORS config allows DELETE, TRACE, and CONNECT from the frontend origin. Should whitelist specific methods.
 
-14. Missing security headers. No helmet middleware. The API responds with no X-Content-Type-Options, X-Frame-Options, or Content-Security-Policy.
+1. Missing security headers. No helmet middleware. The API responds with no X-Content-Type-Options, X-Frame-Options, or Content-Security-Policy.
 
-15. No Docker Compose for local development. Developers must manually provision PostgreSQL, Redis, and S3-compatible storage before a single line of app code runs. This breaks onboarding.
+1. No Docker Compose for local development. Developers must manually provision PostgreSQL, Redis, and S3-compatible storage before a single line of app code runs. This breaks onboarding.
 
 ---
+
 4. Top 20 Improvements (Ranked by Impact vs. Effort)
 
 ┌─────┬─────────────────────────────────────────────────────────────────────────────────────────────────┬──────────┬────────┬───────────────────┐
-│  #  │                                           Improvement                                           │ Severity │ Effort │       When        │
+│ # │ Improvement │ Severity │ Effort │ When │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 1   │ Fix command injection — use array exec form, never shell interpolation                          │ Critical │ Low    │ Before MVP        │
+│ 1 │ Fix command injection — use array exec form, never shell interpolation │ Critical │ Low │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 2   │ Add zod validation on all API request bodies                                                    │ Critical │ Medium │ Before MVP        │
+│ 2 │ Add zod validation on all API request bodies │ Critical │ Medium │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 3   │ Fix path traversal in outputDir — strip .. components, resolve inside buildPath                 │ Critical │ Low    │ Before MVP        │
+│ 3 │ Fix path traversal in outputDir — strip .. components, resolve inside buildPath │ Critical │ Low │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 4   │ Replace token-in-URL git auth with credential helper or GIT_ASKPASS env var                     │ Critical │ Medium │ Before MVP        │
+│ 4 │ Replace token-in-URL git auth with credential helper or GIT_ASKPASS env var │ Critical │ Medium │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 5   │ Add database indexes: userId on Project, projectId on Deployment, deploymentId on DeploymentLog │ High     │ Low    │ Before MVP        │
+│ 5 │ Add database indexes: userId on Project, projectId on Deployment, deploymentId on DeploymentLog │ High │ Low │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 6   │ Make deployment URL configurable — replace hardcoded localhost:8001 with env var BASE_URL       │ High     │ Low    │ Before MVP        │
+│ 6 │ Make deployment URL configurable — replace hardcoded localhost:8001 with env var BASE_URL │ High │ Low │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 7   │ Add Docker Compose for local dev (Postgres, Redis, MinIO)                                       │ High     │ Medium │ Before MVP        │
+│ 7 │ Add Docker Compose for local dev (Postgres, Redis, MinIO) │ High │ Medium │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 8   │ Add proper TypeScript types to @repo/shared Redis client — eliminate any                        │ High     │ Low    │ Before MVP        │
+│ 8 │ Add proper TypeScript types to @repo/shared Redis client — eliminate any │ High │ Low │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 9   │ Add helmet and fix methods: ["*"] in CORS                                                       │ High     │ Low    │ Before MVP        │
+│ 9 │ Add helmet and fix methods: ["*"] in CORS │ High │ Low │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 10  │ Validate all required env vars at process startup (backend and shipyard)                        │ High     │ Low    │ Before MVP        │
+│ 10 │ Validate all required env vars at process startup (backend and shipyard) │ High │ Low │ Before MVP │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 11  │ Add structured logging with Pino — include deploymentId and request ID in context               │ High     │ Medium │ Before Production │
+│ 11 │ Add structured logging with Pino — include deploymentId and request ID in context │ High │ Medium │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 12  │ Add rate limiting middleware (express-rate-limit) on project creation and deployment trigger    │ High     │ Low    │ Before Production │
+│ 12 │ Add rate limiting middleware (express-rate-limit) on project creation and deployment trigger │ High │ Low │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 13  │ Add GitHub Actions CI — lint, type-check, build on every push                                   │ High     │ Medium │ Before Production │
+│ 13 │ Add GitHub Actions CI — lint, type-check, build on every push │ High │ Medium │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 14  │ Add deployment size limits and S3 upload parallelism (Promise.all)                              │ Medium   │ Low    │ Before Production │
+│ 14 │ Add deployment size limits and S3 upload parallelism (Promise.all) │ Medium │ Low │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 15  │ Implement ws-server for real-time build log streaming                                           │ Medium   │ High   │ Before Production │
+│ 15 │ Implement ws-server for real-time build log streaming │ Medium │ High │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 16  │ Add integration tests for the deployment pipeline (happy path + failure path)                   │ Medium   │ High   │ Before Production │
+│ 16 │ Add integration tests for the deployment pipeline (happy path + failure path) │ Medium │ High │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 17  │ Add AWS region to .env.example — remove hardcoded ap-south-1                                    │ Medium   │ Low    │ Before Production │
+│ 17 │ Add AWS region to .env.example — remove hardcoded ap-south-1 │ Medium │ Low │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 18  │ Add dead-letter queue for failed deployments — retry or alert on stale QUEUED rows              │ Medium   │ Medium │ Before Production │
+│ 18 │ Add dead-letter queue for failed deployments — retry or alert on stale QUEUED rows │ Medium │ Medium │ Before Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 19  │ Add S3 lifecycle rules to expire artifacts from deleted deployments                             │ Medium   │ Low    │ After Production  │
+│ 19 │ Add S3 lifecycle rules to expire artifacts from deleted deployments │ Medium │ Low │ After Production │
 ├─────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┼────────┼───────────────────┤
-│ 20  │ Add Prometheus metrics endpoint or OpenTelemetry instrumentation to backend and shipyard        │ Low      │ High   │ After Production  │
+│ 20 │ Add Prometheus metrics endpoint or OpenTelemetry instrumentation to backend and shipyard │ Low │ High │ After Production │
 └─────┴─────────────────────────────────────────────────────────────────────────────────────────────────┴──────────┴────────┴───────────────────┘
 
 ---
+
 5. Production Readiness Checklist
 
 Must Fix (blockers)
@@ -158,6 +162,7 @@ Nice to Have
 - pnpm audit in CI
 
 ---
+
 6. Refactoring Opportunities
 
 build-in-container.ts — split concerns. This single file handles container creation, log streaming, output directory resolution, and S3 upload orchestration. Each is a distinct concern. Extract: createBuildContainer(), streamContainerLogs(), resolveOutputDir(), and the upload loop into uploadBuildArtifacts().
@@ -171,6 +176,7 @@ new-project.controller.ts — split into two files. The file contains two unrela
 Next.js API routes — extract DB logic to service layer. app/api/projects/route.ts and app/api/projects/[projectId]/route.ts call Prisma directly. Backend already has a services/deployment.service.ts convention. Add services/project.service.ts and services/deployment.service.ts in apps/web or move API logic to the Express backend.
 
 ---
+
 7. Future Roadmap
 
 Phase 1 — MVP Completion
@@ -217,6 +223,7 @@ Phase 4 — Enterprise Quality
 - Build cache layer (skip rebuild if commit SHA unchanged)
 
 ---
+
 8. Suggested Repository Improvements
 
 Folder structure
@@ -240,8 +247,8 @@ CI/CD
 Add .github/workflows/ci.yml:
 on: [push, pull_request]
 jobs:
-  validate:
-    steps: install → lint → type-check → build
+validate:
+steps: install → lint → type-check → build
 
 Add .github/workflows/security.yml with pnpm audit and dependency scanning (Dependabot or Renovate).
 
@@ -262,6 +269,7 @@ Automation
 The .husky/pre-commit only runs pnpm format. Add pnpm lint && pnpm check-types so type errors are caught before push, not in CI.
 
 ---
+
 9. Open Source Readiness
 
 Current state: not ready.
@@ -288,4 +296,3 @@ What would make it feel professional:
 Once the critical issues are resolved and Docker Compose is added, this project has a genuinely interesting architecture that would attract contributors — a self-hosted Vercel alternative is a real gap in the open-source ecosystem.
 
 ✻ Churned for 4m 23s
-
