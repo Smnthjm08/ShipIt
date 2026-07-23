@@ -17,10 +17,12 @@
     "eslint": "^9.39.1"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.990.0",
     "redis": "^5.10.0"
   },
   "exports": {
     ".": "./src/index.ts",
+    "./aws/s3": "./src/aws/s3.ts",
     "./redis/client": "./src/redis/client.ts",
     "./redis/publisher": "./src/redis/publisher.ts",
     "./redis/queue": "./src/redis/queue.ts",

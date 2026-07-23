@@ -1,10 +1,27 @@
 import Docker from "dockerode";
 import path from "path";
 import fs from "fs";
+import { prisma } from "@repo/db";
 import { getAllFiles } from "./get-all-files";
 import { uploadFile } from "./aws";
 
 export const docker = new Docker();
+
+// Hard ceiling on a single build so one hung build can't wedge the worker forever.
+const BUILD_TIMEOUT_MS = Number(process.env.BUILD_TIMEOUT_MS) || 10 * 60 * 1000;
+
+// Persist a build log line so it can be shown to the user (see DeploymentLog).
+async function persistLog(deploymentId: string, message: string) {
+  const trimmed = message.trim();
+  if (!trimmed) return;
+  try {
+    await prisma.deploymentLog.create({
+      data: { deploymentId, message: trimmed },
+    });
+  } catch (e) {
+    console.error("Failed to persist deployment log:", e);
+  }
+}
 
 function detectPackageManager(projectRoot: string): "npm" | "yarn" | "pnpm" {
   if (fs.existsSync(path.join(projectRoot, "pnpm-lock.yaml"))) return "pnpm";
@@ -92,6 +109,11 @@ export const buildInContainer = async (
     HostConfig: {
       Binds: [`${absolutePath}:/app`],
       AutoRemove: true,
+      // Resource caps so an untrusted build can't exhaust the host.
+      Memory: 2 * 1024 * 1024 * 1024, // 2 GiB
+      MemorySwap: 2 * 1024 * 1024 * 1024, // no extra swap beyond Memory
+      NanoCpus: 2 * 1_000_000_000, // 2 CPUs
+      PidsLimit: 512,
     },
     WorkingDir: WORKDIR,
   });
@@ -105,17 +127,37 @@ export const buildInContainer = async (
     stderr: true,
   });
 
-  // Pipe output to console
+  // Pipe output to console and persist it for the user.
   stream.on("data", (chunk) => {
     const log = chunk.toString();
     console.log("Build log:", log);
+    void persistLog(deploymentId, log);
   });
 
   // Start the container
   await container.start();
 
-  // Wait for container to finish
-  const result = await container.wait();
+  // Wait for the container to finish, but stop it if it blows past the timeout.
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    console.error(`Build exceeded ${BUILD_TIMEOUT_MS}ms — stopping container`);
+    void persistLog(deploymentId, `Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`);
+    // AutoRemove cleans up once stopped; fall back to kill if stop fails.
+    container.stop({ t: 0 }).catch(() => container.kill().catch(() => {}));
+  }, BUILD_TIMEOUT_MS);
+
+  let result;
+  try {
+    result = await container.wait();
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (timedOut) {
+    throw new Error(`Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`);
+  }
+
   const statusCode = result.StatusCode;
 
   if (statusCode === 0) {

@@ -1,3 +1,4 @@
+import fs from "fs";
 import { redisQueue } from "@repo/shared";
 import { prisma } from "@repo/db";
 import { cloneRepo } from "./git/clone-repo";
@@ -14,6 +15,7 @@ async function startWorker() {
 
   while (true) {
     let deploymentIdElement: string | null = null;
+    let repoDir: string | null = null;
     try {
       console.log("Waiting for deployment...");
       const deploymentId = await redisQueue.brPop("deploymentId", 0);
@@ -45,7 +47,7 @@ async function startWorker() {
         data: { status: "CLONING" },
       });
 
-      const repoDir = await cloneRepo(deployment);
+      repoDir = await cloneRepo(deployment);
       console.log("Repo cloned successfully:", repoDir);
 
       await prisma.deployment.update({
@@ -82,6 +84,16 @@ async function startWorker() {
         }
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
+    } finally {
+      // Always remove the cloned repo so the worker's disk doesn't fill up.
+      if (repoDir && fs.existsSync(repoDir)) {
+        try {
+          fs.rmSync(repoDir, { recursive: true, force: true });
+          console.log("Cleaned up clone dir:", repoDir);
+        } catch (e) {
+          console.error("Failed to clean up clone dir:", repoDir, e);
+        }
+      }
     }
   }
 }

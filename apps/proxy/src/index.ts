@@ -1,19 +1,13 @@
 import express from "express";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { createS3Client, getBucketName } from "@repo/shared/aws/s3";
 import { prisma } from "@repo/db";
 import mime from "mime-types";
 
 const app = express();
 const PORT = 8001;
 
-const s3 = new S3Client({
-  region: "ap-south-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-  ...(process.env.AWS_ENDPOINT ? { endpoint: process.env.AWS_ENDPOINT } : {}),
-});
+const s3 = createS3Client();
 
 app.use(async (req, res) => {
   const hostname = req.hostname;
@@ -67,7 +61,7 @@ app.use(async (req, res) => {
 
     try {
       const command = new GetObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME!,
+        Bucket: getBucketName(),
         Key: s3Key,
       });
       const response = await s3.send(command);
@@ -87,7 +81,7 @@ app.use(async (req, res) => {
         const indexKey = `${deployment.id}/index.html`;
         try {
           const command = new GetObjectCommand({
-            Bucket: process.env.AWS_BUCKET_NAME!,
+            Bucket: getBucketName(),
             Key: indexKey,
           });
           const response = await s3.send(command);

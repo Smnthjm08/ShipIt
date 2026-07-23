@@ -49,5 +49,14 @@ export const cloneRepo = async (deployment: DeploymentWithRelations) => {
 
   await git.clone(repoUrl, cloneDir);
 
+  // The tokenized URL is persisted in <cloneDir>/.git/config. Since this dir is
+  // bind-mounted into a container that runs arbitrary user build commands, reset
+  // the remote to the clean URL so the OAuth token can't be read from inside the build.
+  await simpleGit(cloneDir).remote([
+    "set-url",
+    "origin",
+    deployment.project.repoUrl,
+  ]);
+
   return cloneDir;
 };
