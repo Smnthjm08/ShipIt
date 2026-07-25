@@ -248,7 +248,7 @@ function HowItWorks() {
         <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
           {steps.map((step, i) => (
             <Reveal key={step.title} delay={i * 0.08}>
-              <div className="h-full rounded-xl border border-border bg-card p-6">
+              <div className="h-full rounded-lg border border-border bg-card p-6">
                 <div className="flex items-center gap-3">
                   <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <step.icon className="size-5" aria-hidden />
@@ -320,7 +320,7 @@ function Features() {
         <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature, i) => (
             <Reveal key={feature.title} delay={i * 0.06}>
-              <div className="h-full rounded-xl border border-border bg-card p-6">
+              <div className="h-full rounded-lg border border-border bg-card p-6">
                 <feature.icon className="size-5 text-primary" aria-hidden />
                 <h3 className="mt-4 font-medium">{feature.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -344,7 +344,7 @@ function CtaBand() {
     <section className="border-t border-border/60 py-20">
       <div className="container mx-auto px-4">
         <Reveal className="mx-auto max-w-3xl">
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-14 text-center">
+          <div className="relative overflow-hidden rounded-lg border border-border bg-card px-6 py-14 text-center">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40 bg-primary/10 blur-3xl"

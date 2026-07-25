@@ -1,95 +1,110 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, Github, Loader2 } from "lucide-react";
+import { signIn } from "@repo/auth/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
   CardDescription,
   CardFooter,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
-import { useState } from "react";
-import { signIn } from "@repo/auth/client";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/globals/theme-toggle";
 
 export default function ConnectGithubPage() {
   const [loading, setLoading] = useState(false);
 
+  const handleSignIn = async () => {
+    await signIn.social(
+      {
+        provider: "github",
+        callbackURL: "/",
+      },
+      {
+        onRequest: () => setLoading(true),
+        onResponse: () => setLoading(false),
+      },
+    );
+  };
+
   return (
-    <main className="flex items-center flex-1 flex-row justify-center">
-      <Card className="min-w-md text-center">
-        <CardHeader>
-          <CardTitle className="text-lg md:text-xl">Connect Github</CardTitle>
-          <CardDescription className="text-xs md:text-sm">
-            Connect your GitHub account to get started
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div
-              className={cn(
-                "w-full gap-2 flex items-center",
-                "justify-between flex-col",
-              )}
+    <div className="relative flex min-h-screen flex-col w-full">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-105 w-205 max-w-full -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
+      />
+
+      <header className="flex items-center justify-between px-4 py-4 sm:px-6">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+        >
+          <Link href="/">
+            <ArrowLeft aria-hidden />
+            Back to home
+          </Link>
+        </Button>
+        <ThemeToggle />
+      </header>
+
+      <main className="flex flex-1 items-center justify-center">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="flex flex-col items-center gap-2 text-center">
+            <span className="mb-1 flex size-12 items-center justify-center rounded-xl border border-border bg-muted/50">
+              <Github className="size-6" aria-hidden />
+            </span>
+            <CardTitle className="text-xl">Connect GitHub</CardTitle>
+            <CardDescription>
+              Sign in with GitHub to deploy and manage your projects
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={loading}
+              aria-busy={loading}
+              onClick={handleSignIn}
             >
-              <Button
-                variant="outline"
-                className={cn("w-full gap-2")}
-                disabled={loading}
-                onClick={async () => {
-                  await signIn.social(
-                    {
-                      provider: "github",
-                      callbackURL: "/",
-                    },
-                    {
-                      onRequest: (ctx) => {
-                        console.log("context", ctx);
-                        setLoading(true);
-                      },
-                      onResponse: (ctx) => {
-                        console.log("context", ctx);
-                        setLoading(false);
-                      },
-                    },
-                  );
-                }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="1em"
-                  height="1em"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
-                  ></path>
-                </svg>
-                Sign in with Github
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <div className="flex justify-center w-full border-t py-4">
-            <p className="text-center text-xs text-neutral-500">
-              built with{" "}
-              <Link
-                href="https://better-auth.com"
-                className="underline"
-                target="_blank"
-              >
-                <span className="dark:text-white/70 cursor-pointer">
-                  better-auth.
-                </span>
-              </Link>
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin" aria-hidden />
+                  Redirecting to GitHub…
+                </>
+              ) : (
+                <>
+                  <Github aria-hidden />
+                  Sign in with GitHub
+                </>
+              )}
+            </Button>
+          </CardContent>
+
+          <CardFooter className="flex-col gap-3 border-t">
+            <p className="text-center text-xs text-muted-foreground">
+              We only request access to repositories you choose to deploy.
             </p>
-          </div>
-        </CardFooter>
-      </Card>
-    </main>
+            <p className="text-center text-xs text-muted-foreground">
+              Built with{" "}
+              <a
+                href="https://better-auth.com"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+              >
+                better-auth
+              </a>
+            </p>
+          </CardFooter>
+        </Card>
+      </main>
+    </div>
   );
 }

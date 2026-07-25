@@ -59,8 +59,8 @@ export function DeploymentTable({ deployments }: DeploymentTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Status</TableHead>
             <TableHead>Deployment ID</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Created At</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -75,6 +75,9 @@ export function DeploymentTable({ deployments }: DeploymentTableProps) {
           ) : (
             deployments.map((deployment) => (
               <TableRow key={deployment.id}>
+                <TableCell className="font-mono text-xs">
+                  {deployment.id}
+                </TableCell>
                 <TableCell>
                   <Badge
                     variant={
@@ -87,9 +90,6 @@ export function DeploymentTable({ deployments }: DeploymentTableProps) {
                   >
                     {deployment.status}
                   </Badge>
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  {deployment.id}
                 </TableCell>
                 <TableCell>
                   {new Date(deployment.createdAt).toLocaleString()}
