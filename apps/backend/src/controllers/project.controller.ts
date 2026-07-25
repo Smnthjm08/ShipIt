@@ -6,7 +6,10 @@ export const listProjectsController = async (req: Request, res: Response) => {
     const userId = req.user!.id;
 
     const page = Math.max(1, Number(req.query.page ?? "1") || 1);
-    const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? "10") || 10));
+    const limit = Math.min(
+      50,
+      Math.max(1, Number(req.query.limit ?? "10") || 10),
+    );
     const search =
       typeof req.query.search === "string" ? req.query.search.trim() : "";
 
@@ -83,7 +86,11 @@ export const deleteProjectController = async (req: Request, res: Response) => {
 
     return res
       .status(200)
-      .json({ message: "Project deleted", data: { id: projectId }, error: null });
+      .json({
+        message: "Project deleted",
+        data: { id: projectId },
+        error: null,
+      });
   } catch (error) {
     console.error("Error deleting project:", error);
     return res.status(500).json({

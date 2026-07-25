@@ -1,7 +1,6 @@
 import simpleGit from "simple-git";
 import path from "path";
-import { updateDeploymentStatus } from "../queries/deployment-status";
-import { DeploymentStatus, Prisma } from "@repo/db";
+import { Prisma } from "@repo/db";
 import fs from "fs";
 
 // Type for deployment with all necessary relations
@@ -32,8 +31,9 @@ export const cloneRepo = async (deployment: DeploymentWithRelations) => {
       `https://oauth2:${githubAccountToken}@github.com/`,
     );
   }
-  await updateDeploymentStatus(deployment.id, DeploymentStatus.CLONING);
 
+  // Status transitions are owned by the worker loop (see shipyard/src/index.ts) —
+  // don't set CLONING again here.
   const git = simpleGit();
 
   const repoRoot = path.join(process.cwd(), "repositories");

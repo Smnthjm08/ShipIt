@@ -16,9 +16,17 @@
     "@repo/auth": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/eslint-config": "workspace:*",
+    "@repo/shared": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@types/node": "^20",
+    "@types/ws": "^8.5.13",
     "eslint": "^9.39.1",
+    "nodemon": "^3.1.10",
     "tsx": "^4.21.0"
+  },
+  "dependencies": {
+    "better-auth": "^1.4.10",
+    "ws": "^8.18.0"
   },
   "keywords": [],
   "author": "",

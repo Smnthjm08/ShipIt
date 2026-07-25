@@ -51,13 +51,13 @@ There are no tests in this project yet.
 
 ### Apps
 
-| App         | Port | Purpose                                      |
-| ----------- | ---- | -------------------------------------------- |
-| `web`       | 3000 | Next.js frontend                             |
-| `backend`   | 3002 | Express REST API + better-auth               |
-| `shipyard`  | —    | Background Docker/S3 build worker            |
-| `ws-server` | 3003 | Streams live build logs over WebSocket       |
-| `proxy`     | 8001 | Subdomain → S3 asset server                  |
+| App         | Port | Purpose                                |
+| ----------- | ---- | -------------------------------------- |
+| `web`       | 3000 | Next.js frontend                       |
+| `backend`   | 3002 | Express REST API + better-auth         |
+| `shipyard`  | —    | Background Docker/S3 build worker      |
+| `ws-server` | 3003 | Streams live build logs over WebSocket |
+| `proxy`     | 8001 | Subdomain → S3 asset server            |
 
 ### Packages
 

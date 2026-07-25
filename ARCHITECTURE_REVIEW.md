@@ -4,7 +4,7 @@
 serves by subdomain). Solid foundation, ~60% built. Not production-ready yet. Everything
 below is an additive fix — no rewrite needed.
 
-**Status:** every item below is now done. What's deliberately *not* solved, and would be the
+**Status:** every item below is now done. What's deliberately _not_ solved, and would be the
 next round of work:
 
 - No Node runtime — the platform is static-hosting only, so `NODE`-framework projects and

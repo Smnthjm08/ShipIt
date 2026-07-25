@@ -1,7 +1,9 @@
 import Docker from "dockerode";
 import path from "path";
 import fs from "fs";
-import { prisma } from "@repo/db";
+import { PassThrough } from "stream";
+import { prisma, Framework } from "@repo/db";
+import { publishDeploymentLog } from "@repo/shared";
 import { getAllFiles } from "./get-all-files";
 import { uploadFile } from "./aws";
 
@@ -10,16 +12,88 @@ export const docker = new Docker();
 // Hard ceiling on a single build so one hung build can't wedge the worker forever.
 const BUILD_TIMEOUT_MS = Number(process.env.BUILD_TIMEOUT_MS) || 10 * 60 * 1000;
 
-// Persist a build log line so it can be shown to the user (see DeploymentLog).
-async function persistLog(deploymentId: string, message: string) {
-  const trimmed = message.trim();
-  if (!trimmed) return;
-  try {
-    await prisma.deploymentLog.create({
-      data: { deploymentId, message: trimmed },
+// Directories we look at when the project doesn't declare an output dir.
+// `.next` is deliberately absent — a raw `.next` dir is not servable as static
+// files, see resolveOutputDir().
+const OUTPUT_DIR_CANDIDATES = ["dist", "build", "out"];
+
+/**
+ * Collects build output, persists it to `DeploymentLog` in batches and publishes
+ * every line to Redis so `ws-server` can stream it live.
+ */
+class LogSink {
+  private pending: string[] = [];
+  private partial = "";
+  private timer: NodeJS.Timeout | null = null;
+  private flushing: Promise<void> = Promise.resolve();
+
+  constructor(
+    private readonly deploymentId: string,
+    private readonly batchSize = 50,
+    private readonly flushIntervalMs = 500,
+  ) {}
+
+  /** Feed raw output; only complete lines are emitted. */
+  write(chunk: string) {
+    const lines = (this.partial + chunk).split(/\r?\n/);
+    this.partial = lines.pop() ?? "";
+    for (const line of lines) this.line(line);
+  }
+
+  /** Emit a single line immediately (used for worker-generated notices). */
+  line(message: string) {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
+    void publishDeploymentLog({
+      deploymentId: this.deploymentId,
+      message: trimmed,
+      timestamp: new Date().toISOString(),
     });
-  } catch (e) {
-    console.error("Failed to persist deployment log:", e);
+
+    this.pending.push(trimmed);
+    if (this.pending.length >= this.batchSize) {
+      this.scheduleFlush(0);
+    } else if (!this.timer) {
+      this.scheduleFlush(this.flushIntervalMs);
+    }
+  }
+
+  private scheduleFlush(delay: number) {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      this.flushing = this.flushing.then(() => this.flush());
+    }, delay);
+  }
+
+  private async flush() {
+    if (!this.pending.length) return;
+    const batch = this.pending.splice(0, this.pending.length);
+    try {
+      await prisma.deploymentLog.createMany({
+        data: batch.map((message) => ({
+          deploymentId: this.deploymentId,
+          message,
+        })),
+      });
+    } catch (e) {
+      console.error("Failed to persist deployment logs:", e);
+    }
+  }
+
+  /** Flush anything still buffered. Always await this before the build ends. */
+  async close() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    if (this.partial.trim()) {
+      this.line(this.partial);
+      this.partial = "";
+    }
+    this.flushing = this.flushing.then(() => this.flush());
+    await this.flushing;
   }
 }
 
@@ -27,6 +101,55 @@ function detectPackageManager(projectRoot: string): "npm" | "yarn" | "pnpm" {
   if (fs.existsSync(path.join(projectRoot, "pnpm-lock.yaml"))) return "pnpm";
   if (fs.existsSync(path.join(projectRoot, "yarn.lock"))) return "yarn";
   return "npm";
+}
+
+/**
+ * Work out which directory to upload.
+ *
+ * The proxy serves plain files out of S3 — there is no Node runtime — so a
+ * Next.js project only deploys if it was built with `output: "export"`, which
+ * emits a static `out/`. If we find `.next` and no static output, fail loudly
+ * instead of uploading a directory that can never be served.
+ */
+function resolveOutputDir(
+  buildPath: string,
+  outputDir: string,
+  framework: Framework | null,
+): string {
+  if (outputDir) {
+    const explicit = path.join(buildPath, outputDir);
+    if (!fs.existsSync(explicit)) {
+      throw new Error(
+        `Configured output directory "${outputDir}" does not exist after the build.`,
+      );
+    }
+    return explicit;
+  }
+
+  // Next static export lands in `out`, so check it first for NEXTJS projects.
+  const candidates =
+    framework === "NEXTJS"
+      ? ["out", ...OUTPUT_DIR_CANDIDATES.filter((c) => c !== "out")]
+      : OUTPUT_DIR_CANDIDATES;
+
+  for (const candidate of candidates) {
+    const dir = path.join(buildPath, candidate);
+    if (fs.existsSync(dir)) return dir;
+  }
+
+  if (fs.existsSync(path.join(buildPath, ".next"))) {
+    throw new Error(
+      "Found a .next directory but no static output. ShipIt serves static files " +
+        'from S3 and cannot run a Next.js server. Set `output: "export"` in ' +
+        "next.config.js (which emits `out/`), or set the project's output " +
+        "directory to a folder of static files.",
+    );
+  }
+
+  throw new Error(
+    `No build output found. Looked for ${candidates.join(", ")} in ${buildPath}. ` +
+      "Set the project's output directory if your build writes somewhere else.",
+  );
 }
 
 export const buildInContainer = async (
@@ -37,149 +160,162 @@ export const buildInContainer = async (
   installCommand: string,
   rootDir: string,
   outputDir: string,
+  framework: Framework | null = null,
 ) => {
-  await docker.ping();
-  console.log("Docker connection established!");
+  const logs = new LogSink(deploymentId);
 
-  const absolutePath = path.resolve(cloneDir);
-  console.log(`Mounting ${absolutePath} to /app`);
-
-  const WORKDIR = path.join("/app", rootDir);
-  console.log(`Working directory: ${WORKDIR}`);
-
-  // detect package manager using the sub-directory if rootDir is specified
-  const packageManager = detectPackageManager(path.join(absolutePath, rootDir));
-  console.log(`Detected package manager: ${packageManager}`);
-
-  let installCmd = installCommand;
-  if (!installCmd || installCmd === "npm run install") {
-    if (packageManager === "yarn") installCmd = "yarn install";
-    else if (packageManager === "pnpm") installCmd = "pnpm install";
-    else installCmd = "npm install";
-  }
-
-  let buildCmd = buildCommand;
-  if (!buildCmd) {
-    if (packageManager === "yarn") buildCmd = "yarn build";
-    else if (packageManager === "pnpm") buildCmd = "pnpm build";
-    else buildCmd = "npm run build";
-  }
-
-  const cmd = ["/bin/sh", "-c", `${installCmd} && ${buildCmd}`];
-  console.log(`Executing command: ${cmd.join(" ")}`);
-
-  console.log("Starting Build...");
-  // Use node:20-alpine as base for now, can be dynamic later
-  const image = "node:20-alpine";
-
-  let imageExists = false;
   try {
-    await docker.getImage(image).inspect();
-    imageExists = true;
-    console.log("Image exists locally");
-  } catch (error) {
-    console.log("Image does not exist locally, pulling...");
-  }
+    await docker.ping();
+    console.log("Docker connection established!");
 
-  if (!imageExists) {
-    await new Promise((resolve, reject) => {
-      docker.pull(image, (err: any, stream: NodeJS.ReadableStream) => {
-        if (err) return reject(err);
-        docker.modem.followProgress(
-          stream,
-          (err, output) => {
-            if (err) return reject(err);
-            resolve(output);
-          },
-          (event) => {
-            console.log(event.status);
-          },
-        );
-      });
-    });
-  }
+    const absolutePath = path.resolve(cloneDir);
+    console.log(`Mounting ${absolutePath} to /app`);
 
-  const container = await docker.createContainer({
-    Image: image,
-    name: `deployment-${deploymentId}`,
-    Tty: false,
-    AttachStdout: true,
-    AttachStderr: true,
-    Cmd: cmd,
-    HostConfig: {
-      Binds: [`${absolutePath}:/app`],
-      AutoRemove: true,
-      // Resource caps so an untrusted build can't exhaust the host.
-      Memory: 2 * 1024 * 1024 * 1024, // 2 GiB
-      MemorySwap: 2 * 1024 * 1024 * 1024, // no extra swap beyond Memory
-      NanoCpus: 2 * 1_000_000_000, // 2 CPUs
-      PidsLimit: 512,
-    },
-    WorkingDir: WORKDIR,
-  });
+    const WORKDIR = path.join("/app", rootDir);
+    console.log(`Working directory: ${WORKDIR}`);
 
-  console.log("Container created:", container.id);
-
-  // Attach to container streams before starting
-  const stream = await container.attach({
-    stream: true,
-    stdout: true,
-    stderr: true,
-  });
-
-  // Pipe output to console and persist it for the user.
-  stream.on("data", (chunk) => {
-    const log = chunk.toString();
-    console.log("Build log:", log);
-    void persistLog(deploymentId, log);
-  });
-
-  // Start the container
-  await container.start();
-
-  // Wait for the container to finish, but stop it if it blows past the timeout.
-  let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    console.error(`Build exceeded ${BUILD_TIMEOUT_MS}ms — stopping container`);
-    void persistLog(
-      deploymentId,
-      `Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`,
+    // detect package manager using the sub-directory if rootDir is specified
+    const packageManager = detectPackageManager(
+      path.join(absolutePath, rootDir),
     );
-    // AutoRemove cleans up once stopped; fall back to kill if stop fails.
-    container.stop({ t: 0 }).catch(() => container.kill().catch(() => {}));
-  }, BUILD_TIMEOUT_MS);
+    console.log(`Detected package manager: ${packageManager}`);
 
-  let result;
-  try {
-    result = await container.wait();
-  } finally {
-    clearTimeout(timer);
-  }
+    let installCmd = installCommand;
+    if (!installCmd || installCmd === "npm run install") {
+      if (packageManager === "yarn") installCmd = "yarn install";
+      else if (packageManager === "pnpm") installCmd = "pnpm install";
+      else installCmd = "npm install";
+    }
 
-  if (timedOut) {
-    throw new Error(`Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`);
-  }
+    let buildCmd = buildCommand;
+    if (!buildCmd) {
+      if (packageManager === "yarn") buildCmd = "yarn build";
+      else if (packageManager === "pnpm") buildCmd = "pnpm build";
+      else buildCmd = "npm run build";
+    }
 
-  const statusCode = result.StatusCode;
+    // pnpm/yarn aren't in node:20-alpine; corepack ships with it and can enable them.
+    const prelude =
+      packageManager === "npm"
+        ? ""
+        : "corepack enable >/dev/null 2>&1 || true; ";
 
-  if (statusCode === 0) {
+    const cmd = ["/bin/sh", "-c", `${prelude}${installCmd} && ${buildCmd}`];
+    console.log(`Executing command: ${cmd.join(" ")}`);
+    logs.line(`$ ${installCmd} && ${buildCmd}`);
+
+    console.log("Starting Build...");
+    // Use node:20-alpine as base for now, can be dynamic later
+    const image = "node:20-alpine";
+
+    let imageExists = false;
+    try {
+      await docker.getImage(image).inspect();
+      imageExists = true;
+      console.log("Image exists locally");
+    } catch {
+      console.log("Image does not exist locally, pulling...");
+    }
+
+    if (!imageExists) {
+      await new Promise((resolve, reject) => {
+        docker.pull(image, (err: unknown, stream: NodeJS.ReadableStream) => {
+          if (err) return reject(err);
+          docker.modem.followProgress(
+            stream,
+            (err, output) => {
+              if (err) return reject(err);
+              resolve(output);
+            },
+            (event) => {
+              console.log(event.status);
+            },
+          );
+        });
+      });
+    }
+
+    const container = await docker.createContainer({
+      Image: image,
+      name: `deployment-${deploymentId}`,
+      Tty: false,
+      AttachStdout: true,
+      AttachStderr: true,
+      Cmd: cmd,
+      HostConfig: {
+        Binds: [`${absolutePath}:/app`],
+        AutoRemove: true,
+        // Resource caps so an untrusted build can't exhaust the host.
+        Memory: 2 * 1024 * 1024 * 1024, // 2 GiB
+        MemorySwap: 2 * 1024 * 1024 * 1024, // no extra swap beyond Memory
+        NanoCpus: 2 * 1_000_000_000, // 2 CPUs
+        PidsLimit: 512,
+      },
+      WorkingDir: WORKDIR,
+    });
+
+    console.log("Container created:", container.id);
+
+    // Attach to container streams before starting
+    const stream = await container.attach({
+      stream: true,
+      stdout: true,
+      stderr: true,
+    });
+
+    // Without a TTY the attach stream is multiplexed — demux it so the log lines
+    // don't carry Docker's 8-byte frame headers.
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    docker.modem.demuxStream(stream, stdout, stderr);
+    for (const s of [stdout, stderr]) {
+      s.on("data", (chunk: Buffer) => {
+        const text = chunk.toString();
+        console.log("Build log:", text);
+        logs.write(text);
+      });
+    }
+
+    // Start the container
+    await container.start();
+
+    // Wait for the container to finish, but stop it if it blows past the timeout.
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      console.error(
+        `Build exceeded ${BUILD_TIMEOUT_MS}ms — stopping container`,
+      );
+      logs.line(`Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`);
+      // AutoRemove cleans up once stopped; fall back to kill if stop fails.
+      container.stop({ t: 0 }).catch(() => container.kill().catch(() => {}));
+    }, BUILD_TIMEOUT_MS);
+
+    let result;
+    try {
+      result = await container.wait();
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (timedOut) {
+      throw new Error(`Build timed out after ${BUILD_TIMEOUT_MS / 1000}s`);
+    }
+
+    const statusCode = result.StatusCode;
+
+    if (statusCode !== 0) {
+      console.error(`Build failed with status code: ${statusCode}`);
+      throw new Error(`Build failed with status code: ${statusCode}`);
+    }
+
     console.log(`Build Success!`);
 
     const buildPath = path.join(cloneDir, rootDir);
-    let distFolder = outputDir
-      ? path.join(buildPath, outputDir)
-      : path.join(buildPath, "dist");
-
-    if (!fs.existsSync(distFolder) && !outputDir) {
-      if (fs.existsSync(path.join(buildPath, ".next"))) {
-        distFolder = path.join(buildPath, ".next");
-      } else if (fs.existsSync(path.join(buildPath, "build"))) {
-        distFolder = path.join(buildPath, "build");
-      }
-    }
+    const distFolder = resolveOutputDir(buildPath, outputDir, framework);
 
     console.log(`Uploading artifacts from ${distFolder}...`);
+    logs.line(`Uploading artifacts from ${path.basename(distFolder)}...`);
     const allFiles = getAllFiles(distFolder);
 
     for (const file of allFiles) {
@@ -188,8 +324,10 @@ export const buildInContainer = async (
       await uploadFile(s3Key, file);
     }
     console.log("Upload complete!");
-  } else {
-    console.error(`Build failed with status code: ${statusCode}`);
-    throw new Error(`Build failed with status code: ${statusCode}`);
+    logs.line(`Uploaded ${allFiles.length} files.`);
+  } finally {
+    // The worker records the failure message itself, so nothing to log here —
+    // just make sure buffered output reaches the DB before the build ends.
+    await logs.close();
   }
 };

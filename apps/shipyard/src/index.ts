@@ -1,14 +1,37 @@
 import fs from "fs";
-import { redisQueue } from "@repo/shared";
-import { prisma } from "@repo/db";
+import {
+  connectRedis,
+  reserveBuild,
+  ackBuild,
+  recoverStaleBuilds,
+  publishDeploymentLog,
+} from "@repo/shared";
+import { prisma, DeploymentStatus } from "@repo/db";
 import { cloneRepo } from "./git/clone-repo";
 import { buildInContainer } from "./build-in-container";
+import { updateDeploymentStatus } from "./queries/deployment-status";
+
+/** Update status in the DB and tell any live log watchers about it. */
+async function setStatus(deploymentId: string, status: DeploymentStatus) {
+  await updateDeploymentStatus(deploymentId, status);
+  await publishDeploymentLog({
+    deploymentId,
+    message: `Deployment ${status.toLowerCase()}`,
+    timestamp: new Date().toISOString(),
+    status,
+    done: status === "COMPLETED" || status === "FAILED",
+  });
+}
 
 async function startWorker() {
-  if (!redisQueue.isOpen) {
-    console.log("Waiting for Redis connection...");
-    await redisQueue.connect();
-    console.log("Redis connected successfully");
+  await connectRedis();
+  console.log("Redis connected successfully");
+
+  // A build that was in flight when the worker last died is still parked on the
+  // processing list — put it back on the queue instead of losing it.
+  const recovered = await recoverStaleBuilds();
+  if (recovered.length) {
+    console.log("Requeued orphaned deployments:", recovered.join(", "));
   }
 
   console.log("Worker started, waiting for deployments...");
@@ -18,13 +41,12 @@ async function startWorker() {
     let repoDir: string | null = null;
     try {
       console.log("Waiting for deployment...");
-      const deploymentId = await redisQueue.brPop("deploymentId", 0);
-      if (!deploymentId) continue;
-      deploymentIdElement = deploymentId.element;
+      deploymentIdElement = await reserveBuild(0);
+      if (!deploymentIdElement) continue;
       console.log("Received deploymentId:", deploymentIdElement);
 
       const deployment = await prisma.deployment.findUnique({
-        where: { id: deploymentId.element },
+        where: { id: deploymentIdElement },
         include: {
           project: {
             include: {
@@ -42,18 +64,12 @@ async function startWorker() {
         throw new Error(`Deployment ${deploymentIdElement} not found`);
       }
 
-      await prisma.deployment.update({
-        where: { id: deployment.id },
-        data: { status: "CLONING" },
-      });
+      await setStatus(deployment.id, DeploymentStatus.CLONING);
 
       repoDir = await cloneRepo(deployment);
       console.log("Repo cloned successfully:", repoDir);
 
-      await prisma.deployment.update({
-        where: { id: deployment.id },
-        data: { status: "BUILDING" },
-      });
+      await setStatus(deployment.id, DeploymentStatus.BUILDING);
 
       // new docker container should be created for each deployment
       await buildInContainer(
@@ -64,27 +80,41 @@ async function startWorker() {
         deployment.project.installCommand || "",
         deployment.project.rootDir || "",
         deployment.project.outputDir || "",
+        deployment.project.framework,
       );
       console.log("Docker build successfull");
 
-      await prisma.deployment.update({
-        where: { id: deployment.id },
-        data: { status: "COMPLETED" },
-      });
+      await setStatus(deployment.id, DeploymentStatus.COMPLETED);
     } catch (error) {
       console.error("Error processing deployment:", error);
       if (deploymentIdElement) {
+        const message =
+          error instanceof Error ? error.message : "Unknown build error";
         try {
-          await prisma.deployment.update({
-            where: { id: deploymentIdElement },
-            data: { status: "FAILED" },
+          await prisma.deploymentLog.create({
+            data: { deploymentId: deploymentIdElement, message },
           });
+          await publishDeploymentLog({
+            deploymentId: deploymentIdElement,
+            message,
+            timestamp: new Date().toISOString(),
+          });
+          await setStatus(deploymentIdElement, DeploymentStatus.FAILED);
         } catch (e) {
           console.error("Failed to update deployment status to FAILED", e);
         }
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
     } finally {
+      // The job reached a terminal state (COMPLETED or FAILED) — drop it from the
+      // processing list so startup recovery doesn't replay it.
+      if (deploymentIdElement) {
+        try {
+          await ackBuild(deploymentIdElement);
+        } catch (e) {
+          console.error("Failed to ack deployment:", deploymentIdElement, e);
+        }
+      }
       // Always remove the cloned repo so the worker's disk doesn't fill up.
       if (repoDir && fs.existsSync(repoDir)) {
         try {

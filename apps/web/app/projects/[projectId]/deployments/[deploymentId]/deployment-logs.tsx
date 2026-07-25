@@ -61,7 +61,10 @@ export function DeploymentLogs({
         if (last && last.timestamp >= timestamp && last.message === message) {
           return prev;
         }
-        return [...prev, { id: `${timestamp}-${prev.length}`, message, timestamp }];
+        return [
+          ...prev,
+          { id: `${timestamp}-${prev.length}`, message, timestamp },
+        ];
       });
     };
 
@@ -158,8 +161,7 @@ export function DeploymentLogs({
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    autoScroll.current =
-      el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    autoScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
   };
 
   return (

@@ -24,6 +24,7 @@
     ".": "./src/index.ts",
     "./aws/s3": "./src/aws/s3.ts",
     "./redis/client": "./src/redis/client.ts",
+    "./redis/logs": "./src/redis/logs.ts",
     "./redis/publisher": "./src/redis/publisher.ts",
     "./redis/queue": "./src/redis/queue.ts",
     "./redis/subscriber": "./src/redis/subscriber.ts"

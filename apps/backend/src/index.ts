@@ -1,18 +1,11 @@
-import express, {
-  Router,
-  Request,
-  Response,
-  NextFunction,
-  Application,
-} from "express";
+import express, { Request, Response, NextFunction, Application } from "express";
 import morgan from "morgan";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "@repo/auth/server";
 
-import authMiddleware from "./middlewares/auth.middleware";
-// ... (existing imports)
+import v1Router from "./routes/index";
 
 import { connectRedis } from "@repo/shared";
 
@@ -27,7 +20,7 @@ const allowedOrigins = [process.env.BETTER_AUTH_URL!];
 app.use(
   cors({
     origin: allowedOrigins,
-    methods: ["*"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   }),
 );
@@ -39,26 +32,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const v1Router = Router();
-
 app.get("/", (req: Request, res: Response) => {
   res.json({ message: "Welcome to the Backend API" });
 });
 
 app.use("/api/v1", v1Router);
-
-v1Router.get("/health", (req: Request, res: Response) => {
-  res.json({ status: "OK", message: "healthy!" });
-});
-
-import {
-  newProjectController,
-  createProjectController,
-} from "./controllers/new-project.controller";
-
-v1Router.get("/new", authMiddleware, newProjectController);
-v1Router.post("/new", authMiddleware, createProjectController);
-// v1Router.use("/dashboard", authMiddleware, dashboardRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({
