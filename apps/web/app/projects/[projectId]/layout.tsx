@@ -2,16 +2,7 @@ import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
 import { prisma } from "@repo/db";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { ProjectSidebar } from "./project-sidebar";
+import { ProjectTabs } from "./project-tabs";
 
 interface ProjectLayoutProps {
   children: React.ReactNode;
@@ -46,30 +37,9 @@ export default async function ProjectLayout({
   }
 
   return (
-    <SidebarProvider>
-      <ProjectSidebar projectId={projectId} projectName={project.name} />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Button variant="ghost" size="sm" asChild className="gap-2">
-              <Link href="/">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Link>
-            </Button>
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="min-h-screen flex-1 rounded-xl bg-muted/50 md:min-h-min p-6">
-            {children}
-          </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+      <ProjectTabs projectId={projectId} projectName={project.name} />
+      {children}
+    </div>
   );
 }

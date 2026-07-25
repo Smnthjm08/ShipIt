@@ -114,6 +114,7 @@ enum DeploymentStatus {
 model Deployment {
   id        String           @id @default(cuid())
   projectId String
+  branch    String           @default("main")
   status    DeploymentStatus @default(QUEUED)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt

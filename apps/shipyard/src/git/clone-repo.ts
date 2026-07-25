@@ -47,7 +47,11 @@ export const cloneRepo = async (deployment: DeploymentWithRelations) => {
     fs.rmSync(cloneDir, { recursive: true, force: true });
   }
 
-  await git.clone(repoUrl, cloneDir);
+  await git.clone(repoUrl, cloneDir, [
+    "--branch",
+    deployment.branch,
+    "--single-branch",
+  ]);
 
   // The tokenized URL is persisted in <cloneDir>/.git/config. Since this dir is
   // bind-mounted into a container that runs arbitrary user build commands, reset

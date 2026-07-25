@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@repo/db";
 import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
-import { DeploymentTable } from "./deployment-table";
+import { DeploymentTable } from "@/components/deployments/deployment-table";
 
 interface ProjectDeploymentsPageProps {
   params: Promise<{ projectId: string }>;

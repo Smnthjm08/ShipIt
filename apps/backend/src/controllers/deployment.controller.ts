@@ -76,7 +76,10 @@ export const redeployController = async (req: Request, res: Response) => {
       });
     }
 
-    const deployment = await deploymentService.queueDeployment(projectId);
+    const deployment = await deploymentService.queueDeployment(
+      projectId,
+      project.branch,
+    );
 
     return res.status(201).json({
       message: "Deployment queued",

@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { AuthSession } from "@/types/session";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppShell } from "@/components/globals/app-shell";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -53,10 +54,7 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider user={session?.user || null}>
-              <div className="flex flex-col min-h-screen">
-                {/* <Navbar /> */}
-                {children}
-              </div>
+              <AppShell>{children}</AppShell>
               <Toaster />
             </AuthProvider>
           </ThemeProvider>

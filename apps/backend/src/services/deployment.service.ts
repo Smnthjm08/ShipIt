@@ -87,9 +87,12 @@ export class DeploymentService {
   }
 
   /** Create a fresh deployment for a project and push it onto the build queue. */
-  async queueDeployment(projectId: string): Promise<Deployment> {
+  async queueDeployment(
+    projectId: string,
+    branch: string,
+  ): Promise<Deployment> {
     const deployment = await prisma.deployment.create({
-      data: { projectId, status: "QUEUED" },
+      data: { projectId, status: "QUEUED", branch },
     });
     await enqueueBuild(deployment.id);
     return deployment;

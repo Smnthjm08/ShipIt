@@ -136,6 +136,7 @@ export const createProjectController = async (req: Request, res: Response) => {
         deployments: {
           create: {
             status: "QUEUED",
+            branch,
           },
         },
       },
