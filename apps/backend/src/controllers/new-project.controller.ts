@@ -96,7 +96,7 @@ export const newProjectController = async (req: Request, res: Response) => {
   }
 };
 
-import { redisQueue } from "@repo/shared";
+import { enqueueBuild } from "@repo/shared";
 
 export const createProjectController = async (req: Request, res: Response) => {
   try {
@@ -108,6 +108,8 @@ export const createProjectController = async (req: Request, res: Response) => {
       branch,
       framework,
       buildCommand,
+      installCommand,
+      rootDir,
       outputDir,
     } = req.body;
     const userId = req.user?.id;
@@ -125,6 +127,10 @@ export const createProjectController = async (req: Request, res: Response) => {
         branch,
         framework,
         buildCommand,
+        // The form sends these; without them the project silently falls back to
+        // the schema defaults and ignores what the user typed.
+        ...(installCommand && { installCommand }),
+        ...(rootDir && { rootDir }),
         outputDir,
         userId,
         deployments: {
@@ -139,7 +145,7 @@ export const createProjectController = async (req: Request, res: Response) => {
     });
 
     const deploymentId = newProject.deployments[0].id;
-    await redisQueue.lPush("deploymentId", deploymentId);
+    await enqueueBuild(deploymentId);
 
     res.status(201).json({
       message: "Project created successfully",

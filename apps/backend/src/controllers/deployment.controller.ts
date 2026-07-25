@@ -1,0 +1,223 @@
+import { Request, Response } from "express";
+import { deploymentService } from "../services/deployment.service";
+import { projectService } from "../services/project.service";
+
+/** GET /projects/:projectId/deployments */
+export const listDeploymentsController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const projectId = req.params.projectId!;
+    const userId = req.user!.id;
+
+    const project = await projectService.getOwnedProject(projectId, userId);
+    if (!project) {
+      return res
+        .status(404)
+        .json({ message: "Project not found", data: null, error: null });
+    }
+
+    const page = Math.max(1, Number(req.query.page ?? "1") || 1);
+    const limit = Math.min(
+      100,
+      Math.max(1, Number(req.query.limit ?? "20") || 20),
+    );
+
+    const [deployments, total] = await deploymentService.listOwnedDeployments(
+      projectId,
+      userId,
+      { skip: (page - 1) * limit, take: limit },
+    );
+
+    return res.status(200).json({
+      message: "Fetched deployments successfully",
+      data: deployments,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      error: null,
+    });
+  } catch (error) {
+    console.error("Error fetching deployments:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      data: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+/** POST /projects/:projectId/deployments — redeploy the project's current branch. */
+export const redeployController = async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.projectId!;
+
+    const project = await projectService.getOwnedProject(
+      projectId,
+      req.user!.id,
+    );
+    if (!project) {
+      return res
+        .status(404)
+        .json({ message: "Project not found", data: null, error: null });
+    }
+
+    // Refuse to stack builds — one in-flight deployment per project at a time.
+    const inFlight = project.deployments.find(
+      (d) =>
+        d.status === "QUEUED" ||
+        d.status === "CLONING" ||
+        d.status === "BUILDING",
+    );
+    if (inFlight) {
+      return res.status(409).json({
+        message: "A deployment for this project is already in progress",
+        data: inFlight,
+        error: null,
+      });
+    }
+
+    const deployment = await deploymentService.queueDeployment(projectId);
+
+    return res.status(201).json({
+      message: "Deployment queued",
+      data: deployment,
+      error: null,
+    });
+  } catch (error) {
+    console.error("Error queueing deployment:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      data: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+/** GET /deployments/:deploymentId */
+export const getDeploymentController = async (req: Request, res: Response) => {
+  try {
+    const deployment = await deploymentService.getOwnedDeployment(
+      req.params.deploymentId!,
+      req.user!.id,
+    );
+
+    if (!deployment) {
+      return res
+        .status(404)
+        .json({ message: "Deployment not found", data: null, error: null });
+    }
+
+    return res.status(200).json({
+      message: "Fetched deployment successfully",
+      data: deployment,
+      error: null,
+    });
+  } catch (error) {
+    console.error("Error fetching deployment:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      data: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+/**
+ * GET /deployments/:deploymentId/logs
+ * Pass `?after=<ISO timestamp>` to poll for only the lines you haven't seen.
+ */
+export const getDeploymentLogsController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const deploymentId = req.params.deploymentId!;
+    const deployment = await deploymentService.getOwnedDeployment(
+      deploymentId,
+      req.user!.id,
+    );
+
+    if (!deployment) {
+      return res
+        .status(404)
+        .json({ message: "Deployment not found", data: null, error: null });
+    }
+
+    const afterParam = req.query.after;
+    let after: Date | undefined;
+    if (typeof afterParam === "string" && afterParam) {
+      const parsed = new Date(afterParam);
+      if (Number.isNaN(parsed.getTime())) {
+        return res.status(400).json({
+          message: "`after` must be a valid ISO timestamp",
+          data: null,
+          error: null,
+        });
+      }
+      after = parsed;
+    }
+
+    const limit = Math.min(
+      1000,
+      Math.max(1, Number(req.query.limit ?? "500") || 500),
+    );
+
+    const logs = await deploymentService.getLogs(deploymentId, {
+      after,
+      take: limit,
+    });
+
+    return res.status(200).json({
+      message: "Fetched deployment logs successfully",
+      data: {
+        status: deployment.status,
+        logs,
+        // Cursor for the next poll; live clients should use the ws-server instead.
+        cursor: logs.at(-1)?.timestamp ?? after ?? null,
+      },
+      error: null,
+    });
+  } catch (error) {
+    console.error("Error fetching deployment logs:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      data: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+/** DELETE /deployments/:deploymentId */
+export const deleteDeploymentController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const deploymentId = req.params.deploymentId!;
+    const deployment = await deploymentService.getOwnedDeployment(
+      deploymentId,
+      req.user!.id,
+    );
+
+    if (!deployment) {
+      return res
+        .status(404)
+        .json({ message: "Deployment not found", data: null, error: null });
+    }
+
+    await deploymentService.softDeleteDeployment(deploymentId);
+
+    return res.status(200).json({
+      message: "Deployment deleted",
+      data: { id: deploymentId },
+      error: null,
+    });
+  } catch (error) {
+    console.error("Error deleting deployment:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      data: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

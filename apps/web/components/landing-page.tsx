@@ -128,7 +128,9 @@ function TerminalCard() {
               {line.prefix}
             </span>
             <span
-              className={line.muted ? "text-muted-foreground" : "text-foreground"}
+              className={
+                line.muted ? "text-muted-foreground" : "text-foreground"
+              }
             >
               {line.text}
             </span>

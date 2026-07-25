@@ -31,6 +31,38 @@ export default function CreateNewProjectForm() {
   const repoUrl = searchParams.get("url");
   const branch = searchParams.get("branch") ?? "main";
 
+  const [framework, setFramework] = useState<
+    "NONE" | "NEXTJS" | "REACT" | "VITE" | "NODE"
+  >("NONE");
+  const [buildCommand, setBuildCommand] = useState<string>("");
+  const [outputDir, setOutputDir] = useState<string>("");
+
+  useEffect(() => {
+    switch (framework) {
+      case "NEXTJS":
+        setBuildCommand("npm run build");
+        // Static export only — see the notice below.
+        setOutputDir("out");
+        break;
+      case "REACT":
+        setBuildCommand("npm run build");
+        setOutputDir("build");
+        break;
+      case "VITE":
+        setBuildCommand("npm run build");
+        setOutputDir("dist");
+        break;
+      case "NODE":
+        setBuildCommand("");
+        setOutputDir("");
+        break;
+      default:
+        setBuildCommand("");
+        setOutputDir("");
+    }
+  }, [framework]);
+
+  // Bail out after the hooks so they run in the same order on every render.
   if (!owner || !repo || !repoUrl) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -40,28 +72,6 @@ export default function CreateNewProjectForm() {
       </div>
     );
   }
-
-  const [framework, setFramework] = useState<
-    "NONE" | "NEXTJS" | "REACT" | "VITE" | "NODE"
-  >("NONE");
-  const [buildCommand, setBuildCommand] = useState<string>("");
-
-  useEffect(() => {
-    switch (framework) {
-      case "NEXTJS":
-        setBuildCommand("npm run build");
-        break;
-      case "REACT":
-      case "VITE":
-        setBuildCommand("npm run build");
-        break;
-      case "NODE":
-        setBuildCommand("");
-        break;
-      default:
-        setBuildCommand("");
-    }
-  }, [framework]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     try {
@@ -157,6 +167,26 @@ export default function CreateNewProjectForm() {
                 </Field>
               </div>
 
+              {framework === "NEXTJS" && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+                  ShipIt serves static files, so it can&apos;t run a Next.js
+                  server. Set{" "}
+                  <code className="font-mono">output: &quot;export&quot;</code>{" "}
+                  in <code className="font-mono">next.config.js</code> — the
+                  build then emits <code className="font-mono">out/</code>,
+                  which deploys fine. Server components, API routes, ISR and
+                  image optimisation won&apos;t work.
+                </div>
+              )}
+
+              {framework === "NODE" && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+                  ShipIt has no Node runtime yet — it only serves static files
+                  from S3. A plain Node.js server won&apos;t be reachable after
+                  deploying.
+                </div>
+              )}
+
               <Field>
                 <FieldLabel>Build Command</FieldLabel>
                 <Input
@@ -189,9 +219,15 @@ export default function CreateNewProjectForm() {
 
               <Field>
                 <FieldLabel>Output Directory</FieldLabel>
-                <Input name="outputDir" placeholder="dist" />
+                <Input
+                  name="outputDir"
+                  placeholder="dist"
+                  value={outputDir}
+                  onChange={(e) => setOutputDir(e.target.value)}
+                />
                 <FieldDescription>
-                  Path to build output directory (e.g. dist, .next).
+                  Directory of static files to serve (e.g. dist, build, out).
+                  Leave empty to auto-detect.
                 </FieldDescription>
               </Field>
             </FieldGroup>

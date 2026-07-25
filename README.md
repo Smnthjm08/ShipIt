@@ -27,6 +27,30 @@ The diagram below represents the current production architecture of ShipIt:
 
 ---
 
+## 🔑 GitHub OAuth setup
+
+ShipIt needs an **OAuth App** — not a GitHub App. Create one at
+**Settings → Developer settings → OAuth Apps → New OAuth App**:
+
+| Field                      | Value                                            |
+| -------------------------- | ------------------------------------------------ |
+| Homepage URL               | `http://localhost:3000`                          |
+| Authorization callback URL | `http://localhost:3000/api/auth/callback/github` |
+
+The callback URL must match `${BETTER_AUTH_URL}/api/auth/callback/github`
+**character for character** — any difference (port, trailing slash, `127.0.0.1`
+vs `localhost`) makes GitHub reject the sign-in with _"The redirect_uri is not
+associated with this application."_ `BETTER_AUTH_URL` points at the **web** app,
+because that's what serves `/api/auth`, not the backend.
+
+Copy the client ID and secret into `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
+An OAuth App client ID is 20 hex characters. If yours starts with `Iv23li` or
+`Iv1.` it's a **GitHub App**, which won't work here: GitHub Apps ignore the
+`repo` scope and issue short-lived tokens limited to repositories where the App
+is installed, so Shipyard can't clone private repos with them.
+
+---
+
 ## 🎯 Why ShipIt?
 
 ShipIt is built to explore real-world deployment system design:
