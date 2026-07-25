@@ -84,13 +84,11 @@ export const deleteProjectController = async (req: Request, res: Response) => {
 
     await projectService.softDeleteProject(projectId);
 
-    return res
-      .status(200)
-      .json({
-        message: "Project deleted",
-        data: { id: projectId },
-        error: null,
-      });
+    return res.status(200).json({
+      message: "Project deleted",
+      data: { id: projectId },
+      error: null,
+    });
   } catch (error) {
     console.error("Error deleting project:", error);
     return res.status(500).json({

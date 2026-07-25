@@ -1,13 +1,12 @@
 import { createClient } from "redis";
 import { redisConfig } from "./config.js";
 
-const client = createClient(redisConfig);
+export type RedisClient = ReturnType<typeof createClient>;
 
-export type RedisClient = any;
-export const redis: any = client;
+export const redis: RedisClient = createClient(redisConfig);
 
-redis.on("error", (err: any) => console.error("redis client error:", err));
+redis.on("error", (err: Error) => console.error("redis client error:", err));
 
-redis.connect().catch((err: any) => {
+redis.connect().catch((err: unknown) => {
   console.error("Failed to connect to Redis client:", err);
 });
