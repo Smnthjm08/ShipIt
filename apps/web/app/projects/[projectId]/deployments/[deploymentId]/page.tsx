@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { DeploymentLogs } from "./deployment-logs";
+import { deploymentUrl } from "@/lib/deployment-url";
 
 interface DeploymentPageProps {
   params: Promise<{ projectId: string; deploymentId: string }>;
@@ -75,7 +76,7 @@ export default async function DeploymentPage({ params }: DeploymentPageProps) {
           {deployment.status === "COMPLETED" && (
             <Button asChild variant="outline" size="sm">
               <a
-                href={`http://${deployment.id}.localhost:8001`}
+                href={deploymentUrl(deployment.id)}
                 target="_blank"
                 rel="noopener noreferrer"
               >

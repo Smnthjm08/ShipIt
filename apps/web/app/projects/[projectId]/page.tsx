@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { ExternalLink, Github, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { deploymentUrl } from "@/lib/deployment-url";
 import {
   Card,
   CardContent,
@@ -69,7 +70,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         {latestDeployment && latestDeployment.status === "COMPLETED" && (
           <Button asChild>
             <a
-              href={`http://${latestDeployment.id}.localhost:8001`} // TODO: dynamic domain
+              href={deploymentUrl(latestDeployment.id)}
               target="_blank"
               rel="noopener noreferrer"
             >

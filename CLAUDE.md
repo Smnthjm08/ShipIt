@@ -78,20 +78,34 @@ There are no tests in this project yet.
 
 ### Proxy routing
 
-The proxy reads the subdomain from the incoming `Host` header. If it looks like a deployment ID it fetches that deployment's files; otherwise it finds the latest `COMPLETED` deployment for the project with that ID/name. Files are piped directly from S3 with correct MIME types.
+`apps/proxy/src` is split into `config.ts` (env), `resolve.ts` (host → deployment) and `serve.ts` (S3 → response).
+
+The proxy reads the subdomain from the incoming `Host` header (`X-Forwarded-Host` is trusted, so it works behind a load balancer). With `DEPLOY_BASE_DOMAIN` set, only direct children of that domain resolve; unset, any `<label>.localhost` works for local dev. A subdomain is looked up first as a deployment ID, then as a project ID whose latest `COMPLETED` deployment wins. Project **names** are not routable — only IDs. Lookups are memoised for `PROXY_ROUTE_CACHE_TTL_MS` (30s), so a fresh deployment can take that long to become visible.
+
+Serving rules worth knowing before changing `serve.ts`:
+
+- Only `GET`/`HEAD`; everything else is 405. `HEAD` uses `HeadObject`, not a discarded body.
+- The request path is percent-decoded and normalised before it becomes an S3 key — uploads store literal filenames, so skipping the decode makes any file with a space unreachable.
+- Clean URLs resolve in order: exact key, `<path>.html`, `<path>/index.html`. Without this a static export serves its homepage on every route.
+- The `index.html` SPA fallback applies **only** to navigations (no file extension + `Accept: text/html`). A missing `.js`/`.css` must 404 — answering it with HTML is what produces `Unexpected token '<'` and a blank page.
+- A missing key is a 404, but any other S3 failure (403, 5xx, network) propagates to a 502. Never collapse those into "not found" — a misconfigured bucket would then look like a working site.
+- Hashed assets get `immutable` caching, HTML gets `must-revalidate`; conditional requests are forwarded to S3 so unchanged assets cost a 304.
+- `deploymentUrl()` in `apps/web/lib/deployment-url.ts` is the only place the public URL is built. Keep `NEXT_PUBLIC_DEPLOY_HOST` in sync with `DEPLOY_BASE_DOMAIN`.
 
 ## Environment Variables
 
 Defined in `.env.example` at the root. Turborepo forwards all of them globally (see `turbo.json` `globalEnv`).
 
-| Variable                                                                        | Used by                               |
-| ------------------------------------------------------------------------------- | ------------------------------------- |
-| `DATABASE_URL`                                                                  | `@repo/db`                            |
-| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL`                                        | `@repo/auth`, `backend`, `web`        |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`                                     | `@repo/auth`                          |
-| `NEXT_PUBLIC_API_BASE_URL`                                                      | `web`                                 |
-| `REDIS_URL`                                                                     | `@repo/shared`, `backend`, `shipyard` |
-| `AWS_ACCESS_KEY` / `AWS_SECRET_ACCESS_KEY` / `AWS_ENDPOINT` / `AWS_BUCKET_NAME` | `shipyard`, `proxy`                   |
+| Variable                                                                                       | Used by                                 |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `DATABASE_URL`                                                                                 | `@repo/db`                              |
+| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL`                                                       | `@repo/auth`, `backend`, `web`          |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`                                                    | `@repo/auth`                            |
+| `NEXT_PUBLIC_API_BASE_URL`                                                                     | `web`                                   |
+| `REDIS_URL`                                                                                    | `@repo/shared`, `backend`, `shipyard`   |
+| `AWS_ACCESS_KEY` / `AWS_SECRET_ACCESS_KEY` / `AWS_ENDPOINT` / `AWS_BUCKET_NAME` / `AWS_REGION` | `shipyard`, `proxy`                     |
+| `PROXY_PORT` / `DEPLOY_BASE_DOMAIN`                                                            | `proxy`                                 |
+| `NEXT_PUBLIC_DEPLOY_HOST`                                                                      | `web` (must match `DEPLOY_BASE_DOMAIN`) |
 
 ## Conventions
 

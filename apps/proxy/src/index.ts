@@ -1,108 +1,118 @@
 import express from "express";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { createS3Client, getBucketName } from "@repo/shared/aws/s3";
-import { prisma } from "@repo/db";
-import mime from "mime-types";
+import { BASE_DOMAIN, HEALTH_PATH, PORT } from "./config";
+import { resolveDeployment, subdomainFor } from "./resolve";
+import { errorPage, serveDeployment } from "./serve";
 
 const app = express();
-const PORT = 8001;
 
-const s3 = createS3Client();
+app.disable("x-powered-by");
+// Deployments sit behind a load balancer / tunnel in any real setup, so the
+// site to serve comes from X-Forwarded-Host rather than the socket's host.
+app.set("trust proxy", true);
 
 app.use(async (req, res) => {
-  const hostname = req.hostname;
-  const subdomain = hostname.split(".")[0];
+  if (req.path === HEALTH_PATH) {
+    return res.json({ status: "OK", baseDomain: BASE_DOMAIN || null });
+  }
 
-  // For local development, we might use project-id.localhost
-  // If no subdomain, or 'www', return 404 or landing
-  if (!subdomain || subdomain === "www" || subdomain === "localhost") {
-    return res.status(404).send("Not found");
+  // Static hosting answers reads only. Anything else is a client bug, and
+  // replying 200 with the homepage (as this used to) hides it.
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.set("Allow", "GET, HEAD");
+    return res
+      .status(405)
+      .type("html")
+      .send(
+        errorPage(
+          "405",
+          "Method not allowed",
+          "This deployment only serves static files.",
+        ),
+      );
+  }
+
+  const subdomain = subdomainFor(req.hostname);
+  if (!subdomain) {
+    return res
+      .status(404)
+      .type("html")
+      .send(
+        errorPage(
+          "404",
+          "No site here",
+          "Deployments are served from their own subdomain.",
+        ),
+      );
   }
 
   try {
-    // First, check if the subdomain is a valid deployment ID
-    let deployment = await prisma.deployment.findUnique({
-      where: {
-        id: subdomain,
-      },
-    });
+    const route = await resolveDeployment(subdomain);
 
-    // If not a deployment ID, check if it's a project ID and get the latest completed deployment
-    if (!deployment) {
-      deployment = await prisma.deployment.findFirst({
-        where: {
-          projectId: subdomain,
-          status: "COMPLETED",
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
-    }
+    switch (route.kind) {
+      case "ready":
+        return await serveDeployment(route.deploymentId, req, res);
 
-    if (!deployment) {
-      return res
-        .status(404)
-        .send(
-          "<html><head><title>Deployment not found</title></head><body><h1>Deployment not found</h1><p>If you think this is a mistake, please contact the owner of the project.</p></body></html>",
-        );
-    }
+      case "pending":
+        // 503 + Retry-After so crawlers and uptime checks come back rather than
+        // recording the URL as permanently gone.
+        res.set("Retry-After", "10");
+        return res
+          .status(503)
+          .type("html")
+          .send(
+            errorPage(
+              "503",
+              "Build in progress",
+              `This deployment is <strong>${route.status.toLowerCase()}</strong>. Refresh in a moment.`,
+            ),
+          );
 
-    // Resolve path
-    let filePath = req.path;
-    if (filePath === "/") {
-      filePath = "/index.html";
-    }
+      case "failed":
+        return res
+          .status(404)
+          .type("html")
+          .send(
+            errorPage(
+              "404",
+              "Nothing deployed",
+              "The most recent build for this project didn’t succeed. Check the build logs in your dashboard.",
+            ),
+          );
 
-    const s3Key = `${deployment.id}${filePath}`;
-
-    // Check content type
-    const type = mime.lookup(filePath) || "application/octet-stream";
-
-    try {
-      const command = new GetObjectCommand({
-        Bucket: getBucketName(),
-        Key: s3Key,
-      });
-      const response = await s3.send(command);
-
-      if (response.Body) {
-        res.set("Content-Type", type);
-        // @ts-ignore - response.Body is a stream in node
-        response.Body.pipe(res);
-      } else {
-        res.status(404).send("File not found");
-      }
-    } catch (e) {
-      // Fallback to index.html for SPA routing if 404?
-      // Usually serving index.html for unknown routes is good for SPAs.
-      // Let's implement that fallback.
-      if (filePath !== "/index.html") {
-        const indexKey = `${deployment.id}/index.html`;
-        try {
-          const command = new GetObjectCommand({
-            Bucket: getBucketName(),
-            Key: indexKey,
-          });
-          const response = await s3.send(command);
-          if (response.Body) {
-            res.set("Content-Type", "text/html");
-            // @ts-ignore
-            response.Body.pipe(res);
-            return;
-          }
-        } catch (e2) {
-          console.error("Fallback index.html not found", e2);
-        }
-      }
-      res.status(404).send("Not found");
+      default:
+        return res
+          .status(404)
+          .type("html")
+          .send(
+            errorPage(
+              "404",
+              "Deployment not found",
+              "If you think this is a mistake, contact the owner of the project.",
+            ),
+          );
     }
   } catch (error) {
-    console.error("Error serving request:", error);
-    res.status(500).send("Internal Server Error");
+    console.error(`Error serving ${req.hostname}${req.originalUrl}:`, error);
+    if (res.headersSent) {
+      res.destroy();
+      return;
+    }
+    return res
+      .status(502)
+      .type("html")
+      .send(
+        errorPage(
+          "502",
+          "Upstream error",
+          "This deployment’s files could not be read from storage.",
+        ),
+      );
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Proxy server running on port ${PORT}`);
+  console.log(
+    `Proxy server running on port ${PORT}` +
+      (BASE_DOMAIN ? ` (serving *.${BASE_DOMAIN})` : " (serving *.localhost)"),
+  );
 });

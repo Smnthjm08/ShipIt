@@ -30,6 +30,7 @@ import { useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { deploymentUrl } from "@/lib/deployment-url";
 
 interface Deployment {
   id: string;
@@ -151,7 +152,7 @@ export function DeploymentTable({
                       {deployment.status === "COMPLETED" && (
                         <DropdownMenuItem asChild>
                           <a
-                            href={`http://${deployment.id}.localhost:8001`}
+                            href={deploymentUrl(deployment.id)}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
