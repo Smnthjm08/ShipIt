@@ -8,13 +8,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ExternalLink,
   GitBranch,
   Terminal,
   MoreHorizontal,
+  RotateCw,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
@@ -31,12 +31,44 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { deploymentUrl } from "@/lib/deployment-url";
+import { useRedeploy } from "./redeploy-button";
+import { DeploymentStatus } from "./deployment-status";
+import { absoluteTime, duration, relativeTime, shortId } from "@/lib/format";
+import { statusMeta } from "@/lib/deployment-status";
+
+/**
+ * Its own component so the hook isn't called inside the row loop — one instance
+ * per row keeps the hook count stable.
+ */
+function RedeployMenuItem({
+  projectId,
+  isRetry,
+}: {
+  projectId: string;
+  isRetry: boolean;
+}) {
+  const { redeploy, isRedeploying } = useRedeploy(projectId);
+
+  return (
+    <DropdownMenuItem
+      onSelect={(e) => {
+        e.preventDefault();
+        redeploy();
+      }}
+      disabled={isRedeploying}
+    >
+      <RotateCw className="mr-2 h-4 w-4" />
+      {isRetry ? "Retry deployment" : "Redeploy"}
+    </DropdownMenuItem>
+  );
+}
 
 interface Deployment {
   id: string;
   status: string;
   branch: string;
   createdAt: Date;
+  updatedAt?: Date | string;
   projectId: string;
   project?: { id: string; name: string };
 }
@@ -57,7 +89,7 @@ export function DeploymentTable({
     setIsDeleting(deploymentId);
     try {
       await axios.delete(`/api/deployments/${deploymentId}`);
-      toast.success("Deployment deleted successfully");
+      toast.success("Deployment deleted");
       router.refresh();
     } catch (error) {
       console.error("Failed to delete deployment", error);
@@ -67,117 +99,196 @@ export function DeploymentTable({
     }
   };
 
-  const columnCount = showProject ? 6 : 5;
+  if (deployments.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-10 text-center">
+        <p className="text-sm font-medium">No deployments yet</p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          Every build shows up here with its logs and duration.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showProject && <TableHead>Project</TableHead>}
-            <TableHead>Deployment ID</TableHead>
-            <TableHead>Branch</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created At</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {deployments.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={columnCount} className="h-24 text-center">
-                No deployments found.
-              </TableCell>
+    <>
+      {/* Desktop: a table, because comparing runs across columns is the job.
+          Numbers and IDs use tabular figures so rows stay aligned. */}
+      <div className="hidden rounded-lg border sm:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-35">Status</TableHead>
+              {showProject && <TableHead>Project</TableHead>}
+              <TableHead>Branch</TableHead>
+              <TableHead className="w-30">Age</TableHead>
+              <TableHead className="w-25">Duration</TableHead>
+              <TableHead className="w-30">Deployment</TableHead>
+              <TableHead className="w-15 text-right">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
-          ) : (
-            deployments.map((deployment) => (
-              <TableRow key={deployment.id}>
-                {showProject && (
-                  <TableCell className="font-medium">
-                    {deployment.project ? (
-                      <Link
-                        href={`/projects/${deployment.project.id}`}
-                        className="hover:underline"
-                      >
-                        {deployment.project.name}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
+          </TableHeader>
+          <TableBody>
+            {deployments.map((deployment) => {
+              const meta = statusMeta(deployment.status);
+              const took = meta.isLive
+                ? null
+                : duration(deployment.createdAt, deployment.updatedAt);
+
+              return (
+                <TableRow key={deployment.id} className="group">
+                  <TableCell>
+                    {/* The row's primary link. Stretching it across the row
+                        would swallow the action menu, so it anchors here and
+                        the rest of the row is quiet. */}
+                    <Link
+                      href={`/projects/${deployment.projectId}/deployments/${deployment.id}`}
+                      className="focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      <DeploymentStatus status={deployment.status} size="sm" />
+                    </Link>
                   </TableCell>
-                )}
-                <TableCell className="font-mono text-xs">
-                  {deployment.id}
-                </TableCell>
-                <TableCell>
-                  <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <GitBranch className="h-3.5 w-3.5" aria-hidden />
+
+                  {showProject && (
+                    <TableCell className="font-medium">
+                      {deployment.project ? (
+                        <Link
+                          href={`/projects/${deployment.project.id}`}
+                          className="hover:underline"
+                        >
+                          {deployment.project.name}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  )}
+
+                  <TableCell>
+                    <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+                      <GitBranch className="size-3" aria-hidden />
+                      <span className="font-machine">{deployment.branch}</span>
+                    </span>
+                  </TableCell>
+
+                  <TableCell>
+                    <time
+                      dateTime={new Date(deployment.createdAt).toISOString()}
+                      title={absoluteTime(deployment.createdAt)}
+                      className="font-machine text-muted-foreground text-xs"
+                    >
+                      {relativeTime(deployment.createdAt)}
+                    </time>
+                  </TableCell>
+
+                  <TableCell className="font-machine text-muted-foreground text-xs">
+                    {took ?? "—"}
+                  </TableCell>
+
+                  <TableCell className="font-machine text-muted-foreground text-xs">
+                    {shortId(deployment.id)}
+                  </TableCell>
+
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="size-8 p-0">
+                          <span className="sr-only">
+                            Actions for deployment {shortId(deployment.id)}
+                          </span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/projects/${deployment.projectId}/deployments/${deployment.id}`}
+                          >
+                            <Terminal className="mr-2 h-4 w-4" />
+                            View logs
+                          </Link>
+                        </DropdownMenuItem>
+                        {deployment.status === "COMPLETED" && (
+                          <DropdownMenuItem asChild>
+                            <a
+                              href={deploymentUrl(deployment.id)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              Visit site
+                            </a>
+                          </DropdownMenuItem>
+                        )}
+                        {(deployment.status === "COMPLETED" ||
+                          deployment.status === "FAILED") && (
+                          <RedeployMenuItem
+                            projectId={deployment.projectId}
+                            isRetry={deployment.status === "FAILED"}
+                          />
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDelete(deployment.id)}
+                          disabled={isDeleting === deployment.id}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile: cards. A six-column table on a 375px screen is a
+          scroll-to-read experience, not a list. */}
+      <ul className="divide-border divide-y rounded-lg border sm:hidden">
+        {deployments.map((deployment) => {
+          const meta = statusMeta(deployment.status);
+          const took = meta.isLive
+            ? null
+            : duration(deployment.createdAt, deployment.updatedAt);
+
+          return (
+            <li key={deployment.id}>
+              <Link
+                href={`/projects/${deployment.projectId}/deployments/${deployment.id}`}
+                className="hover:bg-muted/50 focus-visible:ring-ring block p-4 focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <DeploymentStatus status={deployment.status} size="sm" />
+                  <time
+                    dateTime={new Date(deployment.createdAt).toISOString()}
+                    className="font-machine text-muted-foreground text-xs"
+                  >
+                    {relativeTime(deployment.createdAt)}
+                  </time>
+                </div>
+                <div className="text-muted-foreground mt-2 flex items-center gap-3 text-xs">
+                  {showProject && deployment.project && (
+                    <span className="truncate font-medium">
+                      {deployment.project.name}
+                    </span>
+                  )}
+                  <span className="font-machine inline-flex items-center gap-1">
+                    <GitBranch className="size-3" aria-hidden />
                     {deployment.branch}
                   </span>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      deployment.status === "COMPLETED"
-                        ? "default"
-                        : deployment.status === "FAILED"
-                          ? "destructive"
-                          : "secondary"
-                    }
-                  >
-                    {deployment.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {new Date(deployment.createdAt).toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href={`/projects/${deployment.projectId}/deployments/${deployment.id}`}
-                        >
-                          <Terminal className="mr-2 h-4 w-4" />
-                          View Logs
-                        </Link>
-                      </DropdownMenuItem>
-                      {deployment.status === "COMPLETED" && (
-                        <DropdownMenuItem asChild>
-                          <a
-                            href={deploymentUrl(deployment.id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            Visit App
-                          </a>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(deployment.id)}
-                        disabled={isDeleting === deployment.id}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+                  {took && <span className="font-machine">{took}</span>}
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }

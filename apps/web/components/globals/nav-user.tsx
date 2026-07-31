@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
-import { ChevronsUpDown, LogOut, Moon, Sun, User } from "lucide-react";
+import { ChevronsUpDown, LogOut, User } from "lucide-react";
 import { signOut } from "@repo/auth/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,7 +34,6 @@ export function NavUser() {
   const { user } = useAuth();
   const router = useRouter();
   const { isMobile } = useSidebar();
-  const { theme, setTheme } = useTheme();
 
   if (!user) return null;
 
@@ -99,15 +97,6 @@ export function NavUser() {
                 <User />
                 Profile
               </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setTheme(theme === "light" ? "dark" : "light");
-              }}
-            >
-              {theme === "light" ? <Moon /> : <Sun />}
-              Toggle theme
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={handleSignOut}>

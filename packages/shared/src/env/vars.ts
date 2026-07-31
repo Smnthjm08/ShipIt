@@ -69,7 +69,9 @@ export function normalizeEnvVars(input: unknown): EnvVarInput[] {
       continue;
     }
     if (typeof value !== "string") {
-      throw new EnvVarValidationError(`Value for "${trimmedKey}" must be a string`);
+      throw new EnvVarValidationError(
+        `Value for "${trimmedKey}" must be a string`,
+      );
     }
     if (value.length > MAX_ENV_VALUE_LENGTH) {
       throw new EnvVarValidationError(
@@ -95,7 +97,9 @@ export function parseDotEnv(text: string): EnvVarPair[] {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
 
-    const withoutExport = line.startsWith("export ") ? line.slice(7).trim() : line;
+    const withoutExport = line.startsWith("export ")
+      ? line.slice(7).trim()
+      : line;
     const eq = withoutExport.indexOf("=");
     if (eq <= 0) continue;
 
@@ -105,10 +109,15 @@ export function parseDotEnv(text: string): EnvVarPair[] {
     let value = withoutExport.slice(eq + 1).trim();
 
     const quote = value[0];
-    if ((quote === '"' || quote === "'") && value.endsWith(quote) && value.length > 1) {
+    if (
+      (quote === '"' || quote === "'") &&
+      value.endsWith(quote) &&
+      value.length > 1
+    ) {
       value = value.slice(1, -1);
       // Only double quotes carry escape sequences, same as dotenv itself.
-      if (quote === '"') value = value.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
+      if (quote === '"')
+        value = value.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
     } else {
       // An unquoted value ends at the first inline comment.
       const comment = value.indexOf(" #");

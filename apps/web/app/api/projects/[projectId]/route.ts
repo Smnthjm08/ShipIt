@@ -31,6 +31,8 @@ export async function GET(
           orderBy: { createdAt: "desc" },
           where: { isDeleted: false },
         },
+        // Drives the count badges in the project sidebar.
+        _count: { select: { envVars: true, deployments: true } },
       },
     });
 
@@ -113,11 +115,35 @@ export async function PUT(
 
     const { projectId } = await params;
     const body = await request.json();
-    const { name, description } = body;
+    const {
+      name,
+      description,
+      framework,
+      buildCommand,
+      installCommand,
+      rootDir,
+      outputDir,
+      branch,
+    } = body;
 
-    if (!name) {
+    // Patch semantics: a field is only validated and written when the client
+    // actually sent it, so the general-settings and build-settings forms can
+    // save independently without either clobbering the other.
+    if (name !== undefined && !String(name).trim()) {
       return NextResponse.json(
         { error: "Project name is required" },
+        { status: 400 },
+      );
+    }
+
+    const FRAMEWORKS = ["NONE", "NEXTJS", "REACT", "VITE", "NODE"];
+    if (framework !== undefined && !FRAMEWORKS.includes(framework)) {
+      return NextResponse.json({ error: "Unknown framework" }, { status: 400 });
+    }
+
+    if (branch !== undefined && !String(branch).trim()) {
+      return NextResponse.json(
+        { error: "Production branch is required" },
         { status: 400 },
       );
     }
@@ -135,13 +161,22 @@ export async function PUT(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
+    // Build settings are patchable: only fields present in the body change, so
+    // the general-settings form and the build-config form can each save
+    // independently without clobbering the other's values.
     const updatedProject = await prisma.project.update({
       where: {
         id: projectId,
       },
       data: {
-        name,
-        description,
+        ...(name !== undefined && { name: String(name).trim() }),
+        ...(description !== undefined && { description }),
+        ...(framework !== undefined && { framework }),
+        ...(buildCommand !== undefined && { buildCommand }),
+        ...(installCommand !== undefined && { installCommand }),
+        ...(rootDir !== undefined && { rootDir }),
+        ...(outputDir !== undefined && { outputDir }),
+        ...(branch !== undefined && { branch: String(branch).trim() }),
       },
     });
 

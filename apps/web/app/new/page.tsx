@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RepoList } from "@/components/new/repo-list";
 import { GitUrlInput } from "@/components/new/git-url-input";
 
@@ -23,30 +24,74 @@ export default async function NewProjectPage({
   const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/new`);
   if (q) url.searchParams.set("q", String(q));
 
-  const res = await fetch(url.toString(), {
-    headers: { cookie },
-    credentials: "include",
-  });
+  // A failed fetch used to fall through to an empty array, which rendered as
+  // "No repositories found" — the user read that as "I have no repos" rather
+  // than "your GitHub token expired".
+  let repos: unknown[] = [];
+  let loadError: string | null = null;
 
-  const json = res.ok ? await res.json() : { data: [] };
-  const data: [] = json?.data;
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { cookie },
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (res.status === 401 || res.status === 404) {
+      loadError =
+        "ShipIt can't reach your GitHub account. Reconnect GitHub and try again.";
+    } else if (!res.ok) {
+      loadError = `GitHub returned an error (${res.status}). Try again in a moment.`;
+    } else {
+      const json = await res.json();
+      repos = Array.isArray(json?.data) ? json.data : [];
+    }
+  } catch (error) {
+    console.error("Failed to load repositories:", error);
+    loadError =
+      "Couldn't reach the ShipIt API. Check that the backend is running.";
+  }
 
   return (
-    <main className="flex flex-col justify-between py-6 px-12 gap-4 lg:px-24">
-      <Button variant="ghost" size="sm" asChild className="w-fit gap-2">
-        <Link href="/">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
+    <main className="container mx-auto max-w-3xl px-4 py-8 md:py-10">
+      <Button variant="ghost" size="sm" asChild className="-ml-2 w-fit">
+        <Link href="/projects">
+          <ArrowLeft aria-hidden />
+          Back to projects
         </Link>
       </Button>
 
-      <h1 className="text-2xl font-bold">Let&apos;s build something new</h1>
+      <div className="mt-6 mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Import a repository
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Pick a GitHub repo and ShipIt builds it and serves it on its own URL.
+        </p>
+      </div>
 
       <GitUrlInput />
 
-      <h2 className="text-xl font-bold">Import from Git Repository</h2>
+      <div className="mt-10">
+        <h2 className="text-eyebrow text-muted-foreground mb-3">
+          Your repositories
+        </h2>
 
-      <RepoList repos={Array.isArray(data) ? data : []} />
+        {loadError ? (
+          <Alert variant="destructive">
+            <AlertCircle aria-hidden />
+            <AlertTitle>Couldn&apos;t load your repositories</AlertTitle>
+            <AlertDescription>
+              <p>{loadError}</p>
+              <Button variant="outline" size="sm" className="mt-3" asChild>
+                <Link href="/connect-github">Reconnect GitHub</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <RepoList repos={repos} />
+        )}
+      </div>
     </main>
   );
 }

@@ -99,8 +99,27 @@ model Project {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   deployments Deployment[]
+  envVars     EnvVar[]
 
   @@map("project")
+}
+
+/// Build-time environment variables injected into the build container as a
+/// `.env` file. `value` is never stored in plaintext — it holds the ciphertext
+/// produced by `encryptSecret()` in @repo/shared and is only decrypted by
+/// Shipyard when a build runs.
+model EnvVar {
+  id        String   @id @default(cuid())
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, key])
+  @@map("env_var")
 }
 
 enum DeploymentStatus {

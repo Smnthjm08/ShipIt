@@ -79,8 +79,10 @@ export function RepoList({ repos }: RepoListProps) {
             </ItemContent>
             <ItemActions>
               <Button asChild size="sm">
+                {/* `repo.name`, not `fullName` — the import form uses this as
+                    the project name, and "owner/name" reads badly there. */}
                 <Link
-                  href={`/new/import/?repo=${repo?.fullName}&owner=${repo?.owner}&branch=${repo?.defaultBranch}&url=${repo?.url}`}
+                  href={`/new/import/?repo=${encodeURIComponent(repo?.name)}&owner=${encodeURIComponent(repo?.owner)}&branch=${encodeURIComponent(repo?.defaultBranch ?? "main")}&url=${encodeURIComponent(repo?.url)}&language=${encodeURIComponent(repo?.language ?? "")}`}
                 >
                   Import
                 </Link>

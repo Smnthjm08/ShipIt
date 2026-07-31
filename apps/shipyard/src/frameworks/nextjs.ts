@@ -245,14 +245,35 @@ export default nextConfig;
  * A config that defers to the user's own and forces the settings a static
  * export needs.
  *
- * Written as `.mjs` so it can import the original whatever module system that
- * uses: `.cjs` and a plain CJS `.js` come back through default interop, and an
- * ESM `.js`/`.mjs` exports its config as the default either way. The original
- * may also export a (possibly async) function of `(phase, context)`, so this
- * always exports the function form and resolves whichever shape it finds.
+ * The wrapper's extension has to match the original's world, because Next loads
+ * the two kinds of config through completely different pipelines:
+ *
+ * - `.js`/`.cjs`/`.mjs` are `import()`ed, so an `.mjs` wrapper reaches all
+ *   three — CJS comes back through default interop, ESM as its default export.
+ * - `.ts` is transpiled by Next's own SWC pass and `require`d from a string.
+ *   That pass registers a `require.extensions` hook for `.ts` whenever the
+ *   output contains `require(` (which our import compiles to), so a `.ts`
+ *   wrapper can require the renamed original and it gets transpiled too. An
+ *   `.mjs` wrapper could not: importing a `.ts` file is not something Node
+ *   itself can do on the version the build container runs.
+ *
+ * The body is deliberately plain JavaScript with no annotations so the same
+ * source is valid in both, and the original may export a (possibly async)
+ * function of `(phase, context)`, so this always exports the function form and
+ * resolves whichever shape it finds.
  */
-function wrapperConfig(originalSpecifier: string): string {
-  return `${GENERATED_HEADER}
+function wrapperConfig(
+  originalSpecifier: string,
+  isTypeScript: boolean,
+): string {
+  // `next build` type-checks the project, and a default create-next-app
+  // tsconfig includes `**/*.ts` — which is this file. Nothing here is worth
+  // failing a build over.
+  const header = isTypeScript
+    ? "// @ts-nocheck\n" + GENERATED_HEADER
+    : GENERATED_HEADER;
+
+  return `${header}
 import base from "${originalSpecifier}";
 
 // Features that cannot exist on a static host. Left in place, \`next build\`
@@ -280,14 +301,7 @@ export type ConfigureResult =
   | { action: "created"; file: string }
   | { action: "wrapped"; file: string; original: string };
 
-/**
- * Make sure the build produces a static export.
- *
- * A `next.config.ts` is deliberately not rewritten: Next compiles that file
- * with its own TypeScript loader, and a generated wrapper importing it is not
- * reliable enough to bet a build on. Those projects get an explicit error
- * instead, which is what they got before this existed.
- */
+/** Make sure the build produces a static export. */
 export function configureStaticExport(projectRoot: string): ConfigureResult {
   const existing = findConfig(projectRoot);
 
@@ -304,26 +318,23 @@ export function configureStaticExport(projectRoot: string): ConfigureResult {
     return { action: "already-configured", file: basename };
   }
 
-  if (basename.endsWith(".ts")) {
-    throw new Error(
-      `${basename} does not set \`output: "export"\`. ShipIt serves static files ` +
-        "from S3 and cannot run a Next.js server, and it cannot safely rewrite a " +
-        "TypeScript config. Add `output: \"export\"` (and `images: { unoptimized: " +
-        "true }` if you use next/image) to " +
-        `${basename}, then redeploy.`,
-    );
-  }
+  const extension = path.extname(existing);
+  const isTypeScript = extension === ".ts";
+  const wrapperName = isTypeScript ? "next.config.ts" : "next.config.mjs";
 
-  const originalName = `${ORIGINAL_BASENAME}${path.extname(existing)}`;
+  // The extension stays on the specifier on purpose: `require("./x.ts")` needs
+  // the hook's registered extension, and Node's native type stripping (used on
+  // newer runtimes) rejects extensionless relative imports outright.
+  const originalName = `${ORIGINAL_BASENAME}${extension}`;
   fs.renameSync(existing, path.join(projectRoot, originalName));
   fs.writeFileSync(
-    path.join(projectRoot, "next.config.mjs"),
-    wrapperConfig(`./${originalName}`),
+    path.join(projectRoot, wrapperName),
+    wrapperConfig(`./${originalName}`, isTypeScript),
   );
 
-  // The original has been renamed out of the way, so `next.config.mjs` is now
-  // the only file Next will pick up — it never sees two configs.
-  return { action: "wrapped", file: "next.config.mjs", original: originalName };
+  // The original has been renamed out of the way, so the wrapper is now the
+  // only config Next will pick up — it never sees two.
+  return { action: "wrapped", file: wrapperName, original: originalName };
 }
 
 /**
@@ -360,7 +371,9 @@ export function prepareNextProject(projectRoot: string, log: Log): boolean {
       log(`${result.file} already sets output: "export" — using it as is.`);
       break;
     case "created":
-      log(`No Next config found — generated ${result.file} with output: "export".`);
+      log(
+        `No Next config found — generated ${result.file} with output: "export".`,
+      );
       break;
     case "wrapped":
       log(

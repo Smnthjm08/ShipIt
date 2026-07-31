@@ -3,6 +3,7 @@ import { prisma } from "@repo/db";
 import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
 import { DeploymentTable } from "@/components/deployments/deployment-table";
+import { RedeployButton } from "@/components/deployments/redeploy-button";
 
 interface ProjectDeploymentsPageProps {
   params: Promise<{ projectId: string }>;
@@ -44,11 +45,16 @@ export default async function ProjectDeploymentsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Deployments</h1>
-        <p className="text-muted-foreground">
-          View and manage your deployment history
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Deployments</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {deployments.length === 0
+              ? "No builds yet for this project."
+              : `${deployments.length} build${deployments.length === 1 ? "" : "s"} for ${project.name}.`}
+          </p>
+        </div>
+        <RedeployButton projectId={projectId} size="sm" />
       </div>
 
       <DeploymentTable deployments={deployments} />

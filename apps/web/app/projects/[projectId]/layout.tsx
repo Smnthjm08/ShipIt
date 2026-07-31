@@ -2,13 +2,17 @@ import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
 import { prisma } from "@repo/db";
 import { notFound } from "next/navigation";
-import { ProjectTabs } from "./project-tabs";
 
 interface ProjectLayoutProps {
   children: React.ReactNode;
   params: Promise<{ projectId: string }>;
 }
 
+/**
+ * Guards the project routes. Navigation used to live here as a horizontal tab
+ * strip — it now lives in the sidebar, which switches into project mode for
+ * these routes, so the layout only has to own access control and page padding.
+ */
 export default async function ProjectLayout({
   children,
   params,
@@ -19,7 +23,7 @@ export default async function ProjectLayout({
   });
 
   if (!session?.user?.id) {
-    return notFound(); // Or redirect to login
+    return notFound();
   }
 
   const project = await prisma.project.findFirst({
@@ -28,17 +32,15 @@ export default async function ProjectLayout({
       userId: session.user.id,
       isDeleted: false,
     },
+    select: { id: true },
   });
 
-  // If project is deleted or doesn't exist, we might want to show 404 or redirect.
-  // Since this is a layout, returning notFound() will render the closest not-found.tsx
   if (!project) {
     return notFound();
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <ProjectTabs projectId={projectId} projectName={project.name} />
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
       {children}
     </div>
   );
