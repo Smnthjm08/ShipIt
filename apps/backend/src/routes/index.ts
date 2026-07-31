@@ -10,6 +10,10 @@ import {
   deleteProjectController,
 } from "../controllers/project.controller";
 import {
+  listEnvVarsController,
+  replaceEnvVarsController,
+} from "../controllers/env-var.controller";
+import {
   listDeploymentsController,
   redeployController,
   getDeploymentController,
@@ -34,6 +38,14 @@ v1Router.delete(
   "/projects/:projectId",
   authMiddleware,
   deleteProjectController,
+);
+
+// Build-time environment variables scoped to a project
+v1Router.get("/projects/:projectId/env", authMiddleware, listEnvVarsController);
+v1Router.put(
+  "/projects/:projectId/env",
+  authMiddleware,
+  replaceEnvVarsController,
 );
 
 // Deployments scoped to a project

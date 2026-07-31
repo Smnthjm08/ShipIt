@@ -4,8 +4,10 @@ import fs from "fs";
 import { PassThrough } from "stream";
 import { prisma, Framework } from "@repo/db";
 import { publishDeploymentLog } from "@repo/shared";
+import type { EnvVarPair } from "@repo/shared/env/vars";
 import { getAllFiles } from "./get-all-files";
 import { uploadFile } from "./aws";
+import { excludeDotEnvFromGit, writeDotEnvFile } from "./env/project-env";
 
 export const docker = new Docker();
 
@@ -26,12 +28,33 @@ class LogSink {
   private partial = "";
   private timer: NodeJS.Timeout | null = null;
   private flushing: Promise<void> = Promise.resolve();
+  private secrets: string[] = [];
 
   constructor(
     private readonly deploymentId: string,
     private readonly batchSize = 50,
     private readonly flushIntervalMs = 500,
   ) {}
+
+  /**
+   * Register values to mask before anything is persisted or streamed. Build
+   * tools echo their environment more often than you'd like (`vite build
+   * --debug`, failing scripts printing argv), and these logs are stored.
+   */
+  setSecrets(values: string[]) {
+    // Longest first so a value containing another is masked whole.
+    this.secrets = values
+      .filter((v) => v.length >= 4)
+      .sort((a, b) => b.length - a.length);
+  }
+
+  private redact(message: string) {
+    let out = message;
+    for (const secret of this.secrets) {
+      if (out.includes(secret)) out = out.split(secret).join("***");
+    }
+    return out;
+  }
 
   /** Feed raw output; only complete lines are emitted. */
   write(chunk: string) {
@@ -42,7 +65,7 @@ class LogSink {
 
   /** Emit a single line immediately (used for worker-generated notices). */
   line(message: string) {
-    const trimmed = message.trim();
+    const trimmed = this.redact(message.trim());
     if (!trimmed) return;
 
     void publishDeploymentLog({
@@ -161,8 +184,11 @@ export const buildInContainer = async (
   rootDir: string,
   outputDir: string,
   framework: Framework | null = null,
+  envVars: EnvVarPair[] = [],
 ) => {
   const logs = new LogSink(deploymentId);
+  // Before anything can be written to the log stream.
+  logs.setSecrets(envVars.map((v) => v.value));
 
   try {
     await docker.ping();
@@ -199,6 +225,26 @@ export const buildInContainer = async (
       packageManager === "npm"
         ? ""
         : "corepack enable >/dev/null 2>&1 || true; ";
+
+    // Bundlers read env two different ways — Vite and CRA inline `.env` files
+    // at build time, while plain scripts read `process.env` — so provide both.
+    if (envVars.length) {
+      const { inheritedKeys } = writeDotEnvFile(
+        path.join(absolutePath, rootDir),
+        envVars,
+      );
+      excludeDotEnvFromGit(absolutePath, rootDir);
+
+      logs.line(
+        `Injected ${envVars.length} environment variable${envVars.length === 1 ? "" : "s"}: ` +
+          envVars.map((v) => v.key).join(", "),
+      );
+      if (inheritedKeys.length) {
+        logs.line(
+          `Kept from the repo's own .env: ${inheritedKeys.join(", ")}`,
+        );
+      }
+    }
 
     const cmd = ["/bin/sh", "-c", `${prelude}${installCmd} && ${buildCmd}`];
     console.log(`Executing command: ${cmd.join(" ")}`);
@@ -242,6 +288,9 @@ export const buildInContainer = async (
       AttachStdout: true,
       AttachStderr: true,
       Cmd: cmd,
+      // Deliberately no `CI` here: `react-scripts build` turns warnings into
+      // errors when CI is set, which fails perfectly deployable React apps.
+      Env: envVars.map(({ key, value }) => `${key}=${value}`),
       HostConfig: {
         Binds: [`${absolutePath}:/app`],
         AutoRemove: true,
@@ -270,9 +319,9 @@ export const buildInContainer = async (
     docker.modem.demuxStream(stream, stdout, stderr);
     for (const s of [stdout, stderr]) {
       s.on("data", (chunk: Buffer) => {
-        const text = chunk.toString();
-        console.log("Build log:", text);
-        logs.write(text);
+        // Straight to the sink — it redacts injected secrets before anything is
+        // persisted, streamed or printed. Don't console.log the raw text here.
+        logs.write(chunk.toString());
       });
     }
 

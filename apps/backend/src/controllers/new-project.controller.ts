@@ -97,6 +97,8 @@ export const newProjectController = async (req: Request, res: Response) => {
 };
 
 import { enqueueBuild } from "@repo/shared";
+import { EnvVarValidationError, normalizeEnvVars } from "@repo/shared/env/vars";
+import { envVarService } from "../services/env-var.service";
 
 export const createProjectController = async (req: Request, res: Response) => {
   try {
@@ -111,11 +113,26 @@ export const createProjectController = async (req: Request, res: Response) => {
       installCommand,
       rootDir,
       outputDir,
+      envVars,
     } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Validate before the write so a bad key can't create a half-configured
+    // project whose first build is already queued.
+    let envVarData: { key: string; value: string }[];
+    try {
+      envVarData = envVarService.buildCreateData(normalizeEnvVars(envVars));
+    } catch (error) {
+      if (error instanceof EnvVarValidationError) {
+        return res
+          .status(400)
+          .json({ message: error.message, data: null, error: error.message });
+      }
+      throw error;
     }
 
     const newProject = await prisma.project.create({
@@ -133,6 +150,7 @@ export const createProjectController = async (req: Request, res: Response) => {
         ...(rootDir && { rootDir }),
         outputDir,
         userId,
+        ...(envVarData.length && { envVars: { create: envVarData } }),
         deployments: {
           create: {
             status: "QUEUED",

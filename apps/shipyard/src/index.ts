@@ -9,6 +9,7 @@ import {
 import { prisma, DeploymentStatus } from "@repo/db";
 import { cloneRepo } from "./git/clone-repo";
 import { buildInContainer } from "./build-in-container";
+import { decryptProjectEnv } from "./env/project-env";
 import { updateDeploymentStatus } from "./queries/deployment-status";
 
 /** Update status in the DB and tell any live log watchers about it. */
@@ -50,6 +51,7 @@ async function startWorker() {
         include: {
           project: {
             include: {
+              envVars: true,
               user: {
                 include: {
                   accounts: true,
@@ -71,6 +73,10 @@ async function startWorker() {
 
       await setStatus(deployment.id, DeploymentStatus.BUILDING);
 
+      // Decrypt here rather than inside the build so a bad key fails the
+      // deployment with a clear message instead of a mid-build error.
+      const envVars = decryptProjectEnv(deployment.project.envVars);
+
       // new docker container should be created for each deployment
       await buildInContainer(
         deployment.id,
@@ -81,6 +87,7 @@ async function startWorker() {
         deployment.project.rootDir || "",
         deployment.project.outputDir || "",
         deployment.project.framework,
+        envVars,
       );
       console.log("Docker build successfull");
 

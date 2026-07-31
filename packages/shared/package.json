@@ -14,6 +14,7 @@
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@types/node": "^20.19.27",
     "eslint": "^9.39.1"
   },
   "dependencies": {
@@ -23,6 +24,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./aws/s3": "./src/aws/s3.ts",
+    "./crypto/secrets": "./src/crypto/secrets.ts",
+    "./env/vars": "./src/env/vars.ts",
     "./redis/client": "./src/redis/client.ts",
     "./redis/logs": "./src/redis/logs.ts",
     "./redis/publisher": "./src/redis/publisher.ts",
