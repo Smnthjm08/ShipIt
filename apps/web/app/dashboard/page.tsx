@@ -1,14 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { LayoutDashboard } from "lucide-react";
-import { ComingSoon } from "@/components/coming-soon";
-
+/**
+ * There is no dashboard yet. Sending people to the project list is a more
+ * honest answer than a "coming soon" placeholder sitting in the primary nav —
+ * the route stays so existing links and bookmarks keep working.
+ */
 export default function DashboardPage() {
-  return (
-    <ComingSoon
-      icon={LayoutDashboard}
-      title="Dashboard"
-      description="An overview of your usage, build activity, and project health is on its way."
-    />
-  );
+  redirect("/projects");
 }

@@ -75,6 +75,10 @@
   --radius-4xl: 28px;
   --radius-pill: 9999px;
   --radius-full: 9999px;
+
+  /* One easing curve for the whole product. Using the CSS default `ease`
+     everywhere is the fastest way to make an interface feel generic. */
+  --ease-shipit: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :root {
@@ -296,5 +300,36 @@
   pre,
   .font-code {
     font-family: var(--font-mono), "JetBrains Mono", monospace;
+  }
+
+  /* Section eyebrow — uppercase micro-label with the loosened tracking the
+     type system calls for. Used above grouped content and in the sidebar. */
+  .text-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Anything machine-generated — IDs, durations, timestamps, env keys, commit
+     refs. Tabular figures stop digits jittering as values update. */
+  .font-machine {
+    font-family: var(--font-mono), "JetBrains Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+/* Motion is a system, not per-component decoration: one curve, entrances
+   slower than exits, and nothing at all when the user opts out. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

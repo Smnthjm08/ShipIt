@@ -8,6 +8,7 @@ import type { EnvVarPair } from "@repo/shared/env/vars";
 import { getAllFiles } from "./get-all-files";
 import { uploadFile } from "./aws";
 import { excludeDotEnvFromGit, writeDotEnvFile } from "./env/project-env";
+import { prepareNextProject } from "./frameworks/nextjs";
 
 export const docker = new Docker();
 
@@ -126,34 +127,52 @@ function detectPackageManager(projectRoot: string): "npm" | "yarn" | "pnpm" {
   return "npm";
 }
 
+/** Directories the build actually produced, for an error the user can act on. */
+function producedDirs(buildPath: string): string[] {
+  try {
+    return fs
+      .readdirSync(buildPath, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+      .filter((e) => e.name !== "node_modules")
+      .map((e) => e.name);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Work out which directory to upload.
  *
  * The proxy serves plain files out of S3 — there is no Node runtime — so a
  * Next.js project only deploys if it was built with `output: "export"`, which
- * emits a static `out/`. If we find `.next` and no static output, fail loudly
- * instead of uploading a directory that can never be served.
+ * emits a static `out/`. `prepareNextProject()` configures that before the
+ * build; if a `.next` still shows up with no static output, fail loudly instead
+ * of uploading a directory that can never be served.
  */
 function resolveOutputDir(
   buildPath: string,
   outputDir: string,
-  framework: Framework | null,
+  isNext: boolean,
 ): string {
   if (outputDir) {
     const explicit = path.join(buildPath, outputDir);
     if (!fs.existsSync(explicit)) {
+      const produced = producedDirs(buildPath);
       throw new Error(
-        `Configured output directory "${outputDir}" does not exist after the build.`,
+        `Configured output directory "${outputDir}" does not exist after the build.` +
+          (produced.length
+            ? ` The build produced: ${produced.join(", ")}. Update the project's ` +
+              "output directory in settings to match."
+            : ""),
       );
     }
     return explicit;
   }
 
-  // Next static export lands in `out`, so check it first for NEXTJS projects.
-  const candidates =
-    framework === "NEXTJS"
-      ? ["out", ...OUTPUT_DIR_CANDIDATES.filter((c) => c !== "out")]
-      : OUTPUT_DIR_CANDIDATES;
+  // Next static export lands in `out`, so check it first for Next projects.
+  const candidates = isNext
+    ? ["out", ...OUTPUT_DIR_CANDIDATES.filter((c) => c !== "out")]
+    : OUTPUT_DIR_CANDIDATES;
 
   for (const candidate of candidates) {
     const dir = path.join(buildPath, candidate);
@@ -226,6 +245,14 @@ export const buildInContainer = async (
         ? ""
         : "corepack enable >/dev/null 2>&1 || true; ";
 
+    // Next.js can only be deployed here as a static export, so the config is
+    // prepared (and impossible builds are rejected) before the container starts
+    // rather than after a full install and build. No-op for other frameworks.
+    const isNext = prepareNextProject(
+      path.join(absolutePath, rootDir),
+      (message) => logs.line(message),
+    );
+
     // Bundlers read env two different ways — Vite and CRA inline `.env` files
     // at build time, while plain scripts read `process.env` — so provide both.
     if (envVars.length) {
@@ -240,9 +267,7 @@ export const buildInContainer = async (
           envVars.map((v) => v.key).join(", "),
       );
       if (inheritedKeys.length) {
-        logs.line(
-          `Kept from the repo's own .env: ${inheritedKeys.join(", ")}`,
-        );
+        logs.line(`Kept from the repo's own .env: ${inheritedKeys.join(", ")}`);
       }
     }
 
@@ -361,7 +386,13 @@ export const buildInContainer = async (
     console.log(`Build Success!`);
 
     const buildPath = path.join(cloneDir, rootDir);
-    const distFolder = resolveOutputDir(buildPath, outputDir, framework);
+    // Detection from package.json wins, but honour the user's pick as a
+    // fallback so a project whose deps we couldn't read still checks `out`.
+    const distFolder = resolveOutputDir(
+      buildPath,
+      outputDir,
+      isNext || framework === "NEXTJS",
+    );
 
     console.log(`Uploading artifacts from ${distFolder}...`);
     logs.line(`Uploading artifacts from ${path.basename(distFolder)}...`);

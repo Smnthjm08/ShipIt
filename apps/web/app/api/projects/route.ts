@@ -36,6 +36,15 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: "desc" },
+        // The list is a health board — without the latest deployment every card
+        // renders with no status at all.
+        include: {
+          deployments: {
+            where: { isDeleted: false },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
       }),
       prisma.project.count({ where }),
     ]);

@@ -1,9 +1,6 @@
 import { prisma } from "@repo/db";
 import { encryptSecret } from "@repo/shared/crypto/secrets";
-import {
-  EnvVarValidationError,
-  type EnvVarInput,
-} from "@repo/shared/env/vars";
+import { EnvVarValidationError, type EnvVarInput } from "@repo/shared/env/vars";
 
 /** What the API is allowed to hand back — never the decrypted value. */
 export interface EnvVarSummary {

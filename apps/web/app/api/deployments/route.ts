@@ -18,9 +18,23 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "10", 10);
     const search = searchParams.get("search") || "";
+    const status = searchParams.get("status") || "";
+
+    // BUILDING in the UI covers everything in flight, so the filter widens to
+    // the statuses a user would describe as "still going".
+    const STATUS_GROUPS: Record<string, string[]> = {
+      COMPLETED: ["COMPLETED"],
+      FAILED: ["FAILED"],
+      BUILDING: ["BUILDING", "CLONING", "QUEUED"],
+    };
 
     const where: Prisma.DeploymentWhereInput = {
       isDeleted: false,
+      ...(STATUS_GROUPS[status] && {
+        status: {
+          in: STATUS_GROUPS[status] as Prisma.EnumDeploymentStatusFilter["in"],
+        },
+      }),
       project: {
         userId: session.user.id,
         isDeleted: false,

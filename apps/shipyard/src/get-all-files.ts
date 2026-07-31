@@ -6,7 +6,8 @@ import path from "path";
  * whose output dir is the repo root (a plain static site with no build step)
  * would otherwise upload the `.env` we inject and serve it to the world.
  */
-const isSecretFile = (name: string) => name === ".env" || name.startsWith(".env.");
+const isSecretFile = (name: string) =>
+  name === ".env" || name.startsWith(".env.");
 const isVcsDir = (name: string) => name === ".git";
 
 export const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []) => {

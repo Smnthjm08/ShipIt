@@ -73,7 +73,10 @@ export function excludeDotEnvFromGit(cloneDir: string, rootDir: string): void {
     fs.mkdirSync(infoDir, { recursive: true });
     const excludePath = path.join(infoDir, "exclude");
     const relative = path.posix.join(
-      rootDir.replace(/\\/g, "/").replace(/^\.?\/+/, "").replace(/\/+$/, ""),
+      rootDir
+        .replace(/\\/g, "/")
+        .replace(/^\.?\/+/, "")
+        .replace(/\/+$/, ""),
       ".env",
     );
     const entry = `\n# added by ShipIt — injected build env, never commit\n/${relative}\n`;
