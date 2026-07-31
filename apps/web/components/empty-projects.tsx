@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, FolderCode } from "lucide-react";
+import { FolderCode } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,32 +16,21 @@ export function EmptyProjects() {
     <Empty>
       <EmptyHeader>
         <EmptyMedia variant="icon">
-          <FolderCode />
+          <FolderCode aria-hidden />
         </EmptyMedia>
-        <EmptyTitle>No Projects Yet</EmptyTitle>
+        <EmptyTitle>No projects yet</EmptyTitle>
         <EmptyDescription>
-          You haven&apos;t created any projects yet. Get started by creating
-          your first project.
+          Import a GitHub repository and ShipIt builds it and serves it on its
+          own URL.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <div className="flex gap-2">
-          <Link href="/new">
-            <Button>Create Project</Button>
-          </Link>
-          <Button variant="outline">Import Project</Button>
-        </div>
+        {/* One action, and it works. The old "Import Project" button had no
+            handler and "Learn More" pointed at "#". */}
+        <Button asChild>
+          <Link href="/new">Import a repository</Link>
+        </Button>
       </EmptyContent>
-      <Button
-        variant="link"
-        asChild
-        className="text-muted-foreground"
-        size="sm"
-      >
-        <a href="#">
-          Learn More <ArrowUpRightIcon />
-        </a>
-      </Button>
     </Empty>
   );
 }

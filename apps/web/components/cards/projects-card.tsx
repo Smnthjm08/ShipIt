@@ -1,15 +1,8 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GitBranch, Github, Calendar } from "lucide-react";
+import { GitBranch, Github } from "lucide-react";
 import Link from "next/link";
+import { DeploymentStatus } from "@/components/deployments/deployment-status";
+import { absoluteTime, relativeTime } from "@/lib/format";
 
 export interface ProjectTypes {
   id: string;
@@ -20,74 +13,95 @@ export interface ProjectTypes {
   branch: string;
   framework?: string | null;
   createdAt: Date;
-  deployments?: { id: string; status?: string }[];
+  deployments?: { id: string; status?: string; createdAt?: string | Date }[];
 }
 
 interface ProjectsCardProps {
   project: ProjectTypes;
 }
 
+/**
+ * A project in the list. The card answers one question — "is it healthy?" — so
+ * deployment status leads and repo metadata follows.
+ *
+ * The whole card is the link. The GitHub button sits above it as a nested
+ * action, which is why the card itself is a plain element with a stretched
+ * anchor rather than a wrapping <a>.
+ */
 export default function ProjectsCard({ project }: ProjectsCardProps) {
   const latestDeployment = project.deployments?.[0];
 
   return (
-    <Card className="w-full max-w-md hover:shadow-lg transition-shadow">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-xl">{project.name}</CardTitle>
-            <CardDescription className="flex items-center gap-1">
-              <Github className="h-3 w-3" />
-              {project.repoName}
-            </CardDescription>
-          </div>
-          {project.framework && (
-            <Badge className="bg-blue-200 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-              {project.framework}
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-1">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <GitBranch className="h-4 w-4" />
-          <span>{project.branch}</span>
-        </div>
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
-          <span>
-            Created {new Date(project.createdAt).toLocaleDateString()}
-          </span>
-        </div>
-
-        {latestDeployment && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Latest:</span>
-            <Badge
-              variant={
-                latestDeployment.status === "success"
-                  ? "default"
-                  : "destructive"
-              }
+    <div className="group border-border bg-card focus-within:ring-ring/40 relative flex flex-col rounded-lg border p-5 transition-shadow duration-150 ease-shipit hover:shadow-md focus-within:ring-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-semibold tracking-tight">
+            {/* Stretched link: the card is the hit target, the heading is the
+                accessible name, and nested buttons still work. */}
+            <Link
+              href={`/projects/${project.id}`}
+              className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
             >
-              {latestDeployment.status || "pending"}
-            </Badge>
-          </div>
-        )}
-      </CardContent>
+              {project.name}
+            </Link>
+          </h3>
+          <p className="text-muted-foreground mt-1 flex items-center gap-1.5 truncate text-xs">
+            <Github className="size-3 shrink-0" aria-hidden />
+            <span className="font-machine truncate">{project.repoName}</span>
+          </p>
+        </div>
 
-      <CardFooter className="flex gap-1">
-        <Button asChild className="flex-1">
-          <Link href={`/projects/${project.id}`}>View Project</Link>
+        {project.framework && project.framework !== "NONE" && (
+          <span className="text-eyebrow text-muted-foreground bg-muted shrink-0 rounded-pill px-2 py-1">
+            {project.framework}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-5 flex items-center justify-between gap-3">
+        {latestDeployment ? (
+          <>
+            <DeploymentStatus status={latestDeployment.status} size="sm" />
+            {latestDeployment.createdAt && (
+              <time
+                dateTime={new Date(latestDeployment.createdAt).toISOString()}
+                title={absoluteTime(latestDeployment.createdAt)}
+                className="text-muted-foreground font-machine text-xs"
+              >
+                {relativeTime(latestDeployment.createdAt)}
+              </time>
+            )}
+          </>
+        ) : (
+          <span className="text-muted-foreground text-xs">
+            No deployments yet
+          </span>
+        )}
+      </div>
+
+      <div className="border-border mt-4 flex items-center justify-between gap-2 border-t pt-4">
+        <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs">
+          <GitBranch className="size-3 shrink-0" aria-hidden />
+          <span className="font-machine truncate">{project.branch}</span>
+        </span>
+
+        {/* Relative + z-10 lifts this above the stretched link. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="relative z-10 size-8"
+        >
+          <a
+            href={project.repoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open ${project.repoName} on GitHub`}
+          >
+            <Github className="size-4" aria-hidden />
+          </a>
         </Button>
-        <Button variant="outline" asChild>
-          <Link href={project.repoUrl} target="_blank">
-            <Github className="h-4 w-4" />
-          </Link>
-        </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

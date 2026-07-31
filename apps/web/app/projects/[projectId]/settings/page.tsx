@@ -3,6 +3,7 @@ import { prisma } from "@repo/db";
 import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
 import { EditProjectForm } from "./edit-project-form";
+import { BuildConfigForm, type Framework } from "./build-config-form";
 import { DeleteProjectSection } from "./delete-project-section";
 
 interface ProjectSettingsPageProps {
@@ -34,11 +35,12 @@ export default async function ProjectSettingsPage({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-3xl flex-col gap-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your project settings and configurations
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Configuration for {project.name}. Build changes take effect on the
+          next deployment.
         </p>
       </div>
 
@@ -48,7 +50,19 @@ export default async function ProjectSettingsPage({
         initialDescription={project.description}
       />
 
-      <DeleteProjectSection projectId={projectId} />
+      <BuildConfigForm
+        projectId={projectId}
+        initial={{
+          framework: (project.framework ?? "NONE") as Framework,
+          buildCommand: project.buildCommand ?? "",
+          installCommand: project.installCommand ?? "",
+          rootDir: project.rootDir ?? "",
+          outputDir: project.outputDir ?? "",
+          branch: project.branch,
+        }}
+      />
+
+      <DeleteProjectSection projectId={projectId} projectName={project.name} />
     </div>
   );
 }

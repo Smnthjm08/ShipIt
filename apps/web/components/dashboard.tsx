@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Empty,
   EmptyDescription,
@@ -12,13 +11,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertCircle,
   ChevronLeft,
@@ -29,54 +21,50 @@ import {
 } from "lucide-react";
 import ProjectsCard, { ProjectTypes } from "@/components/cards/projects-card";
 import { EmptyProjects } from "@/components/empty-projects";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { PaginatedResponse, PaginationMeta } from "@/types/api";
 import axios from "axios";
 import { SessionUser } from "@/types/session";
+import { isLiveStatus } from "@/lib/deployment-status";
+import { useLiveRefresh } from "@/hooks/use-live-refresh";
 
 interface DashboardProps {
   user: SessionUser;
 }
 
+/** Card-shaped so nothing jumps when the real cards land. */
 function ProjectCardSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="border-border bg-card rounded-lg border p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
           <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-3.5 w-24" />
+          <Skeleton className="h-3 w-24" />
         </div>
-        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-14 rounded-pill" />
       </div>
-      <div className="mt-5 space-y-2.5">
-        <Skeleton className="h-3.5 w-20" />
-        <Skeleton className="h-3.5 w-36" />
+      <div className="mt-5 flex items-center justify-between">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-3 w-12" />
       </div>
-      <div className="mt-6 flex gap-2">
-        <Skeleton className="h-9 flex-1 rounded-md" />
-        <Skeleton className="size-9 rounded-md" />
+      <div className="border-border mt-4 flex items-center justify-between border-t pt-4">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="size-8 rounded-md" />
       </div>
     </div>
   );
-}
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  const initials =
-    parts.length > 1 ? [parts[0], parts[parts.length - 1]] : [parts[0]];
-  return initials.map((part) => part[0]?.toUpperCase()).join("");
 }
 
 export default function Dashboard({ user }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit, setLimit] = useState(6);
+  const [limit] = useState(12);
   const [projects, setProjects] = useState<ProjectTypes[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({
     page: 1,
-    limit: 6,
+    limit: 12,
     total: 0,
     totalPages: 0,
   });
@@ -88,14 +76,16 @@ export default function Dashboard({ user }: DashboardProps) {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
       setCurrentPage(1);
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setIsLoading(true);
+  const fetchProjects = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      // A background refresh must not flash skeletons over content the user
+      // is already reading.
+      if (!silent) setIsLoading(true);
       setError(null);
 
       try {
@@ -104,7 +94,7 @@ export default function Dashboard({ user }: DashboardProps) {
           {
             params: {
               page: currentPage,
-              limit: limit,
+              limit,
               ...(debouncedSearch && { search: debouncedSearch }),
             },
           },
@@ -114,20 +104,30 @@ export default function Dashboard({ user }: DashboardProps) {
         setPagination(response.data.pagination);
       } catch (err) {
         console.error("Fetch error:", err);
-        setError(err instanceof Error ? err.message : "An error occurred");
-        setProjects([]);
+        setError(
+          "We couldn't reach the ShipIt API. Check your connection and try again.",
+        );
+        if (!silent) setProjects([]);
       } finally {
-        setIsLoading(false);
+        if (!silent) setIsLoading(false);
       }
-    };
+    },
+    [currentPage, debouncedSearch, limit],
+  );
 
+  useEffect(() => {
     fetchProjects();
-  }, [currentPage, debouncedSearch, limit, retryNonce, user.id]);
+  }, [fetchProjects, retryNonce, user.id]);
 
-  const handleLimitChange = (value: string) => {
-    setLimit(Number(value));
-    setCurrentPage(1);
-  };
+  // Keep status current while any build is still moving, then go quiet.
+  const hasLiveBuild = projects.some((project) =>
+    isLiveStatus(project.deployments?.[0]?.status),
+  );
+  const silentRefresh = useCallback(
+    () => fetchProjects({ silent: true }),
+    [fetchProjects],
+  );
+  useLiveRefresh(silentRefresh, hasLiveBuild);
 
   const firstName = user.name.split(" ")[0];
   const isPristine =
@@ -135,22 +135,19 @@ export default function Dashboard({ user }: DashboardProps) {
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-10">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar size="lg" className="border border-border">
-            <AvatarImage src={user.image ?? undefined} alt="" />
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Welcome back, {firstName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Manage and deploy your projects
-            </p>
-          </div>
+      {/* Asymmetric: greeting left, action right. Not a centered hero. */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {firstName}&apos;s projects
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {pagination.total > 0
+              ? `${pagination.total} project${pagination.total === 1 ? "" : "s"} connected to GitHub`
+              : "Connect a repository to deploy it"}
+          </p>
         </div>
-        <Button asChild size="lg">
+        <Button asChild>
           <Link href="/new">
             <PlusCircle aria-hidden />
             New Project
@@ -159,57 +156,36 @@ export default function Dashboard({ user }: DashboardProps) {
       </div>
 
       {!isPristine && (
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:w-72">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              type="text"
-              placeholder="Search projects…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-              aria-label="Search projects"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Show</span>
-            <Select value={limit.toString()} onValueChange={handleLimitChange}>
-              <SelectTrigger
-                className="h-8 w-17.5"
-                aria-label="Projects per page"
-              >
-                <SelectValue placeholder={limit.toString()} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[6, 10, 14, 20].map((size) => (
-                  <SelectItem key={size} value={size.toString()}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="mb-6 relative w-full sm:max-w-xs">
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            aria-hidden
+          />
+          <Input
+            type="search"
+            placeholder="Search projects…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            aria-label="Search projects"
+          />
         </div>
       )}
 
       {isLoading ? (
         <div
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
           aria-busy="true"
           aria-live="polite"
         >
-          {Array.from({ length: Math.min(limit, 6) }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />
           ))}
         </div>
       ) : error ? (
         <Alert variant="destructive">
           <AlertCircle aria-hidden />
-          <AlertTitle>Couldn&apos;t load projects</AlertTitle>
+          <AlertTitle>Couldn&apos;t load your projects</AlertTitle>
           <AlertDescription>
             <p>{error}</p>
             <Button
@@ -225,77 +201,33 @@ export default function Dashboard({ user }: DashboardProps) {
         </Alert>
       ) : projects.length > 0 ? (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project: ProjectTypes) => (
               <ProjectsCard key={project.id} project={project} />
             ))}
           </div>
 
-          <div className="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-sm text-muted-foreground">
-              Showing {projects.length} of {pagination.total} project
-              {pagination.total === 1 ? "" : "s"}
-            </p>
-
-            {pagination.totalPages > 1 && (
-              <nav
-                aria-label="Projects pagination"
-                className="flex items-center gap-2"
-              >
+          {pagination.totalPages > 1 && (
+            <nav
+              aria-label="Projects pagination"
+              className="mt-8 flex items-center justify-between gap-4"
+            >
+              <p className="text-muted-foreground text-xs">
+                Page {pagination.page} of {pagination.totalPages}
+              </p>
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft aria-hidden />
                   Previous
                 </Button>
-
-                <div className="hidden gap-1 sm:flex">
-                  {Array.from(
-                    { length: pagination.totalPages },
-                    (_, i) => i + 1,
-                  )
-                    .filter((page) => {
-                      return (
-                        page === 1 ||
-                        page === pagination.totalPages ||
-                        Math.abs(page - currentPage) <= 1
-                      );
-                    })
-                    .map((page, index, array) => {
-                      const showEllipsis =
-                        index > 0 && page - array[index - 1] > 1;
-                      return (
-                        <div key={page} className="flex items-center gap-1">
-                          {showEllipsis && (
-                            <span
-                              className="px-1 text-sm text-muted-foreground"
-                              aria-hidden
-                            >
-                              …
-                            </span>
-                          )}
-                          <Button
-                            variant={
-                              currentPage === page ? "default" : "outline"
-                            }
-                            size="icon"
-                            aria-label={`Go to page ${page}`}
-                            aria-current={
-                              currentPage === page ? "page" : undefined
-                            }
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </Button>
-                        </div>
-                      );
-                    })}
-                </div>
-
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() =>
                     setCurrentPage((p) =>
                       Math.min(pagination.totalPages, p + 1),
@@ -306,9 +238,9 @@ export default function Dashboard({ user }: DashboardProps) {
                   Next
                   <ChevronRight aria-hidden />
                 </Button>
-              </nav>
-            )}
-          </div>
+              </div>
+            </nav>
+          )}
         </>
       ) : debouncedSearch ? (
         <Empty>
@@ -316,10 +248,9 @@ export default function Dashboard({ user }: DashboardProps) {
             <EmptyMedia variant="icon">
               <Search aria-hidden />
             </EmptyMedia>
-            <EmptyTitle>No projects found</EmptyTitle>
+            <EmptyTitle>No projects match that search</EmptyTitle>
             <EmptyDescription>
-              No projects match &ldquo;{debouncedSearch}&rdquo;. Try a different
-              search term.
+              Nothing named &ldquo;{debouncedSearch}&rdquo;. Try a shorter term.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
