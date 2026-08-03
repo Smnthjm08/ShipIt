@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
+    "check-types": "tsc --noEmit",
     "lint": "eslint ."
   },
   "keywords": [],
