@@ -91,17 +91,6 @@ export default function ConnectGithubPage() {
             <p className="text-center text-xs text-muted-foreground">
               We only request access to repositories you choose to deploy.
             </p>
-            <p className="text-center text-xs text-muted-foreground">
-              Built with{" "}
-              <a
-                href="https://better-auth.com"
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
-              >
-                better-auth
-              </a>
-            </p>
           </CardFooter>
         </Card>
       </main>

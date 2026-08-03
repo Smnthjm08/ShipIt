@@ -8,7 +8,9 @@ const DOT_TONE: Record<StatusTone, string> = {
   idle: "bg-muted-foreground",
 };
 
-const TEXT_TONE: Record<StatusTone, string> = {
+/** Exported so surfaces that lay out status text themselves — the activity
+ *  rail, for one — don't re-derive the tone→class mapping. */
+export const TEXT_TONE: Record<StatusTone, string> = {
   success: "text-success",
   error: "text-destructive",
   active: "text-warning",

@@ -130,21 +130,21 @@ Defined in `.env.example` at the root.
 
 **A new variable must be added to `turbo.json` `globalEnv` as well as `.env.example`.** Turborepo 2.x defaults to strict env mode: a variable not listed there is stripped from the task environment, so code reading it under `pnpm dev` sees `undefined` while the same code run directly sees the real value. That split is silent whenever the reader has a fallback — which is exactly how `ENV_SECRET_KEY` went missing and quietly demoted every project's secrets to the `BETTER_AUTH_SECRET`-derived key.
 
-| Variable                                                                                       | Used by                                       |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `DATABASE_URL`                                                                                 | `@repo/db`                                    |
-| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL`                                                       | `@repo/auth`, `backend`, `web`                |
-| `NEXT_PUBLIC_BETTER_AUTH_URL`                                                                  | `@repo/auth` client (browser bundle)          |
-| `ENV_SECRET_KEY`                                                                               | `backend`, `shipyard` (optional)              |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`                                                    | `@repo/auth`                                  |
-| `NEXT_PUBLIC_API_BASE_URL`                                                                     | `web`                                         |
-| `NEXT_PUBLIC_WS_URL` / `WS_PORT`                                                               | `web`, `ws-server` (default `3003`)           |
-| `REDIS_URL`                                                                                    | `@repo/shared`, `backend`, `shipyard`         |
-| `AWS_ACCESS_KEY` / `AWS_SECRET_ACCESS_KEY` / `AWS_ENDPOINT` / `AWS_BUCKET_NAME` / `AWS_REGION` | `shipyard`, `proxy`                           |
-| `BUILD_TIMEOUT_MS`                                                                             | `shipyard` (default 10 min)                   |
-| `PORT`                                                                                         | `backend` (default `3002`)                    |
-| `PROXY_PORT` / `DEPLOY_BASE_DOMAIN` / `PROXY_ROUTE_CACHE_*_TTL_MS`                             | `proxy`                                       |
-| `NEXT_PUBLIC_DEPLOY_HOST`                                                                      | `web` (must match `DEPLOY_BASE_DOMAIN`)       |
+| Variable                                                                                       | Used by                                 |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `DATABASE_URL`                                                                                 | `@repo/db`                              |
+| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL`                                                       | `@repo/auth`, `backend`, `web`          |
+| `NEXT_PUBLIC_BETTER_AUTH_URL`                                                                  | `@repo/auth` client (browser bundle)    |
+| `ENV_SECRET_KEY`                                                                               | `backend`, `shipyard` (optional)        |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`                                                    | `@repo/auth`                            |
+| `NEXT_PUBLIC_API_BASE_URL`                                                                     | `web`                                   |
+| `NEXT_PUBLIC_WS_URL` / `WS_PORT`                                                               | `web`, `ws-server` (default `3003`)     |
+| `REDIS_URL`                                                                                    | `@repo/shared`, `backend`, `shipyard`   |
+| `AWS_ACCESS_KEY` / `AWS_SECRET_ACCESS_KEY` / `AWS_ENDPOINT` / `AWS_BUCKET_NAME` / `AWS_REGION` | `shipyard`, `proxy`                     |
+| `BUILD_TIMEOUT_MS`                                                                             | `shipyard` (default 10 min)             |
+| `PORT`                                                                                         | `backend` (default `3002`)              |
+| `PROXY_PORT` / `DEPLOY_BASE_DOMAIN` / `PROXY_ROUTE_CACHE_*_TTL_MS`                             | `proxy`                                 |
+| `NEXT_PUBLIC_DEPLOY_HOST`                                                                      | `web` (must match `DEPLOY_BASE_DOMAIN`) |
 
 ## Conventions
 

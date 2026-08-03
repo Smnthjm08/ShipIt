@@ -143,7 +143,11 @@
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--on-primary);
-  --sidebar-accent: var(--surface-card);
+  /* Must not resolve to the same value as --sidebar: shadcn's hover and
+     active states are both `bg-sidebar-accent`, so a matching value renders
+     them invisible. --surface-card (#f5f5f5) against --surface-soft (#f8f9fa)
+     was a ~1% step; --surface-strong is an actual one. */
+  --sidebar-accent: var(--surface-strong);
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--hairline);
   --sidebar-ring: var(--ink);
@@ -192,7 +196,10 @@
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--brand-accent);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--surface-dark-elevated);
+  /* This was byte-identical to --sidebar (#1a1a1a), which left the sidebar
+     with no visible hover *or* active state in dark mode — only the
+     `font-medium` half of shadcn's active style was actually rendering. */
+  --sidebar-accent: var(--surface-strong);
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--hairline);
   --sidebar-ring: var(--on-dark-soft);

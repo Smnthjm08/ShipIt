@@ -29,13 +29,13 @@ Connect your GitHub repo, trigger a build, and get a live URL — powered by Doc
 
 > Flow: GitHub OAuth → repo selection → Redis queue → Docker build worker → S3 → proxy → live URL
 
-| App         | Port | Purpose                                                    |
-| ----------- | ---- | ---------------------------------------------------------- |
-| `web`       | 3000 | Next.js frontend, and it serves `/api/auth`                |
-| `backend`   | 3002 | Express REST API + better-auth session verification        |
-| `shipyard`  | —    | Background worker: clone → build in Docker → upload to S3  |
-| `ws-server` | 3003 | Streams live build logs to the browser                     |
-| `proxy`     | 8001 | Maps an incoming subdomain to a deployment and serves it   |
+| App         | Port | Purpose                                                   |
+| ----------- | ---- | --------------------------------------------------------- |
+| `web`       | 3000 | Next.js frontend, and it serves `/api/auth`               |
+| `backend`   | 3002 | Express REST API + better-auth session verification       |
+| `shipyard`  | —    | Background worker: clone → build in Docker → upload to S3 |
+| `ws-server` | 3003 | Streams live build logs to the browser                    |
+| `proxy`     | 8001 | Maps an incoming subdomain to a deployment and serves it  |
 
 Shared packages: `@repo/db` (Prisma), `@repo/auth` (better-auth), `@repo/shared`
 (Redis queue/pub-sub, S3, secret encryption).
@@ -115,12 +115,12 @@ is installed, so Shipyard can't clone private repos with them.
 
 ## 🧩 Framework support
 
-| Framework    | Output   | Notes                                                        |
-| ------------ | -------- | ------------------------------------------------------------ |
-| Vite         | `dist`   | —                                                            |
-| React (CRA)  | `build`  | `CI` is never set, so warnings don't fail the build          |
-| Next.js      | `out`    | Forced to `output: "export"` — static only                   |
-| None / other | detected | Set the output directory yourself in project settings        |
+| Framework    | Output   | Notes                                                 |
+| ------------ | -------- | ----------------------------------------------------- |
+| Vite         | `dist`   | —                                                     |
+| React (CRA)  | `build`  | `CI` is never set, so warnings don't fail the build   |
+| Next.js      | `out`    | Forced to `output: "export"` — static only            |
+| None / other | detected | Set the output directory yourself in project settings |
 
 Next.js repos are rewritten **in the throwaway clone**, never in your
 repository: the config is wrapped to force a static export, and server-only

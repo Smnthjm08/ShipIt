@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import ProjectsCard, { ProjectTypes } from "@/components/cards/projects-card";
 import { EmptyProjects } from "@/components/empty-projects";
+import { RecentDeployments } from "@/components/dashboard/recent-deployments";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { PaginatedResponse, PaginationMeta } from "@/types/api";
@@ -28,6 +29,7 @@ import axios from "axios";
 import { SessionUser } from "@/types/session";
 import { isLiveStatus } from "@/lib/deployment-status";
 import { useLiveRefresh } from "@/hooks/use-live-refresh";
+import { cn } from "@/lib/utils";
 
 interface DashboardProps {
   user: SessionUser;
@@ -132,9 +134,11 @@ export default function Dashboard({ user }: DashboardProps) {
   const firstName = user.name.split(" ")[0];
   const isPristine =
     !isLoading && !error && !debouncedSearch && pagination.total === 0;
+  // An empty rail beside an empty grid reads as two failures, not one invitation.
+  const showRail = !isPristine;
 
   return (
-    <div className="container mx-auto px-4 py-8 md:py-10">
+    <div className="container mx-auto px-4 py-8 md:px-6 md:py-10">
       {/* Asymmetric: greeting left, action right. Not a centered hero. */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -172,91 +176,107 @@ export default function Dashboard({ user }: DashboardProps) {
         </div>
       )}
 
-      {isLoading ? (
-        <div
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          aria-busy="true"
-          aria-live="polite"
-        >
-          {Array.from({ length: 6 }).map((_, i) => (
-            <ProjectCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : error ? (
-        <Alert variant="destructive">
-          <AlertCircle aria-hidden />
-          <AlertTitle>Couldn&apos;t load your projects</AlertTitle>
-          <AlertDescription>
-            <p>{error}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => setRetryNonce((n) => n + 1)}
+      {/* Projects lead; the rail stacks below them on narrow screens so the
+          primary object is never pushed down the page. */}
+      <div
+        className={cn(
+          "grid items-start gap-6",
+          showRail && "lg:grid-cols-[minmax(0,1fr)_20rem]",
+        )}
+      >
+        <div className="min-w-0">
+          {isLoading ? (
+            <div
+              className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3"
+              aria-busy="true"
+              aria-live="polite"
             >
-              <RefreshCw aria-hidden />
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : projects.length > 0 ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project: ProjectTypes) => (
-              <ProjectsCard key={project.id} project={project} />
-            ))}
-          </div>
-
-          {pagination.totalPages > 1 && (
-            <nav
-              aria-label="Projects pagination"
-              className="mt-8 flex items-center justify-between gap-4"
-            >
-              <p className="text-muted-foreground text-xs">
-                Page {pagination.page} of {pagination.totalPages}
-              </p>
-              <div className="flex items-center gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <ProjectCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : error ? (
+            <Alert variant="destructive">
+              <AlertCircle aria-hidden />
+              <AlertTitle>Couldn&apos;t load your projects</AlertTitle>
+              <AlertDescription>
+                <p>{error}</p>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  className="mt-3"
+                  onClick={() => setRetryNonce((n) => n + 1)}
                 >
-                  <ChevronLeft aria-hidden />
-                  Previous
+                  <RefreshCw aria-hidden />
+                  Try again
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage((p) =>
-                      Math.min(pagination.totalPages, p + 1),
-                    )
-                  }
-                  disabled={currentPage === pagination.totalPages}
-                >
-                  Next
-                  <ChevronRight aria-hidden />
-                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : projects.length > 0 ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                {projects.map((project: ProjectTypes) => (
+                  <ProjectsCard key={project.id} project={project} />
+                ))}
               </div>
-            </nav>
+
+              {pagination.totalPages > 1 && (
+                <nav
+                  aria-label="Projects pagination"
+                  className="mt-8 flex items-center justify-between gap-4"
+                >
+                  <p className="text-muted-foreground text-xs">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft aria-hidden />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((p) =>
+                          Math.min(pagination.totalPages, p + 1),
+                        )
+                      }
+                      disabled={currentPage === pagination.totalPages}
+                    >
+                      Next
+                      <ChevronRight aria-hidden />
+                    </Button>
+                  </div>
+                </nav>
+              )}
+            </>
+          ) : debouncedSearch ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Search aria-hidden />
+                </EmptyMedia>
+                <EmptyTitle>No projects match that search</EmptyTitle>
+                <EmptyDescription>
+                  Nothing named &ldquo;{debouncedSearch}&rdquo;. Try a shorter
+                  term.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <EmptyProjects />
           )}
-        </>
-      ) : debouncedSearch ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Search aria-hidden />
-            </EmptyMedia>
-            <EmptyTitle>No projects match that search</EmptyTitle>
-            <EmptyDescription>
-              Nothing named &ldquo;{debouncedSearch}&rdquo;. Try a shorter term.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <EmptyProjects />
-      )}
+        </div>
+
+        {showRail && (
+          <RecentDeployments className="lg:sticky lg:top-20 lg:max-h-[calc(100svh-6rem)] lg:overflow-y-auto" />
+        )}
+      </div>
     </div>
   );
 }

@@ -18,7 +18,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -27,13 +26,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { NavUser } from "./nav-user";
 import { StatusDot } from "@/components/deployments/deployment-status";
-import { RedeployButton } from "@/components/deployments/redeploy-button";
 import { deploymentUrl } from "@/lib/deployment-url";
 import { relativeTime } from "@/lib/format";
 import { isLiveStatus } from "@/lib/deployment-status";
 import { useLiveRefresh } from "@/hooks/use-live-refresh";
+import { cn } from "@/lib/utils";
 
 interface SidebarProject {
   id: string;
@@ -56,9 +54,13 @@ const ACCOUNT_NAV = [
  * The sidebar has two modes.
  *
  * At the account level it lists your projects and their live status. Once you
- * open a project it becomes that project's sidebar — nav, primary action and
- * latest deployment — which is what makes deep navigation feel like you're
- * somewhere rather than just further down a URL.
+ * open a project it becomes that project's sidebar — nav plus the latest
+ * deployment — which is what makes deep navigation feel like you're somewhere
+ * rather than just further down a URL.
+ *
+ * It deliberately carries no primary action and no account menu: every project
+ * page renders its own redeploy button next to the status it acts on, and the
+ * account menu lives in the header so it sits in one place across both shells.
  */
 export function AppSidebar() {
   const pathname = usePathname();
@@ -71,9 +73,6 @@ export function AppSidebar() {
       ) : (
         <AccountSidebar pathname={pathname} />
       )}
-      <SidebarFooter>
-        <NavUser />
-      </SidebarFooter>
     </Sidebar>
   );
 }
@@ -264,19 +263,6 @@ function ProjectSidebar({
             {project?.name ?? "Loading…"}
           </span>
         </div>
-
-        <SidebarMenu>
-          <SidebarMenuItem className="px-2 group-data-[collapsible=icon]:hidden">
-            {/* Context-aware primary action, in the same slot "New Project"
-                occupies at the account level. */}
-            <RedeployButton
-              projectId={projectId}
-              intent={latest?.status === "FAILED" ? "retry" : "redeploy"}
-              size="sm"
-              className="w-full"
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
@@ -293,6 +279,15 @@ function ProjectSidebar({
                       asChild
                       isActive={isActive}
                       tooltip={item.title}
+                      className={cn(
+                        "relative",
+                        // Active must differ from hover, not just from rest —
+                        // hence the marker bar, which is geometry rather than
+                        // colour and so survives greyscale.
+                        isActive
+                          ? "before:bg-sidebar-primary [&>svg]:text-sidebar-primary before:absolute before:top-1/2 before:left-0 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-r-full"
+                          : "text-muted-foreground [&>svg]:text-muted-foreground hover:bg-sidebar-accent/60",
+                      )}
                     >
                       <Link href={item.href}>
                         <item.icon />
