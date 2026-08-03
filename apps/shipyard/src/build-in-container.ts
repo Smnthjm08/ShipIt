@@ -5,6 +5,7 @@ import { PassThrough } from "stream";
 import { prisma, Framework } from "@repo/db";
 import { publishDeploymentLog } from "@repo/shared";
 import type { EnvVarPair } from "@repo/shared/env/vars";
+import { resolveWithin } from "./paths.js";
 import { getAllFiles } from "./get-all-files";
 import { uploadFile } from "./aws";
 import { excludeDotEnvFromGit, writeDotEnvFile } from "./env/project-env";
@@ -200,7 +201,12 @@ function resolveOutputDir(
   isNext: boolean,
 ): string {
   if (outputDir) {
-    const explicit = path.join(buildPath, outputDir);
+    // Contained, not joined — this directory gets uploaded to a public bucket.
+    const explicit = resolveWithin(
+      buildPath,
+      outputDir,
+      "output directory",
+    ).absolute;
     if (!fs.existsSync(explicit)) {
       const produced = producedDirs(buildPath);
       throw new Error(
@@ -261,13 +267,16 @@ export const buildInContainer = async (
     const absolutePath = path.resolve(cloneDir);
     console.log(`Mounting ${absolutePath} to /app`);
 
-    const WORKDIR = path.join("/app", rootDir);
+    // Every host path below derives from rootDir, so contain it once here.
+    const projectRoot = resolveWithin(absolutePath, rootDir, "root directory");
+
+    const WORKDIR = projectRoot.relative
+      ? path.posix.join("/app", projectRoot.relative)
+      : "/app";
     console.log(`Working directory: ${WORKDIR}`);
 
     // detect package manager using the sub-directory if rootDir is specified
-    const packageManager = detectPackageManager(
-      path.join(absolutePath, rootDir),
-    );
+    const packageManager = detectPackageManager(projectRoot.absolute);
     console.log(`Detected package manager: ${packageManager}`);
 
     let installCmd = installCommand;
@@ -291,19 +300,15 @@ export const buildInContainer = async (
     // Next.js can only be deployed here as a static export, so the config is
     // prepared (and impossible builds are rejected) before the container starts
     // rather than after a full install and build. No-op for other frameworks.
-    const isNext = prepareNextProject(
-      path.join(absolutePath, rootDir),
-      (message) => logs.line(message),
+    const isNext = prepareNextProject(projectRoot.absolute, (message) =>
+      logs.line(message),
     );
 
     // Bundlers read env two different ways — Vite and CRA inline `.env` files
     // at build time, while plain scripts read `process.env` — so provide both.
     if (envVars.length) {
-      const { inheritedKeys } = writeDotEnvFile(
-        path.join(absolutePath, rootDir),
-        envVars,
-      );
-      excludeDotEnvFromGit(absolutePath, rootDir);
+      const { inheritedKeys } = writeDotEnvFile(projectRoot.absolute, envVars);
+      excludeDotEnvFromGit(absolutePath, projectRoot.relative);
 
       logs.line(
         `Injected ${envVars.length} environment variable${envVars.length === 1 ? "" : "s"}: ` +
@@ -428,11 +433,10 @@ export const buildInContainer = async (
 
     console.log(`Build Success!`);
 
-    const buildPath = path.join(cloneDir, rootDir);
     // Detection from package.json wins, but honour the user's pick as a
     // fallback so a project whose deps we couldn't read still checks `out`.
     const distFolder = resolveOutputDir(
-      buildPath,
+      projectRoot.absolute,
       outputDir,
       isNext || framework === "NEXTJS",
     );

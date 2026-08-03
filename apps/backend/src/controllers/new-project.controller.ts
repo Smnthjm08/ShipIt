@@ -98,10 +98,26 @@ export const newProjectController = async (req: Request, res: Response) => {
 
 import { enqueueBuild } from "@repo/shared";
 import { EnvVarValidationError, normalizeEnvVars } from "@repo/shared/env/vars";
+import {
+  createProjectSchema,
+  firstValidationError,
+} from "@repo/shared/validation/project";
 import { envVarService } from "../services/env-var.service";
 
 export const createProjectController = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const parsed = createProjectSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = firstValidationError(parsed.error);
+      return res.status(400).json({ message, data: null, error: message });
+    }
+
     const {
       name,
       repoUrl,
@@ -114,12 +130,7 @@ export const createProjectController = async (req: Request, res: Response) => {
       rootDir,
       outputDir,
       envVars,
-    } = req.body;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    } = parsed.data;
 
     // Validate before the write so a bad key can't create a half-configured
     // project whose first build is already queued.

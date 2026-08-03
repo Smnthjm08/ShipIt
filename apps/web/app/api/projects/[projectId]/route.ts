@@ -3,6 +3,10 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import type { AuthSession } from "@/types/session";
 import { prisma } from "@repo/db";
+import {
+  firstValidationError,
+  updateProjectSchema,
+} from "@repo/shared/validation/project";
 
 export async function GET(
   request: NextRequest,
@@ -114,7 +118,14 @@ export async function PUT(
     }
 
     const { projectId } = await params;
-    const body = await request.json();
+    const parsed = updateProjectSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: firstValidationError(parsed.error) },
+        { status: 400 },
+      );
+    }
+
     const {
       name,
       description,
@@ -124,29 +135,7 @@ export async function PUT(
       rootDir,
       outputDir,
       branch,
-    } = body;
-
-    // Patch semantics: a field is only validated and written when the client
-    // actually sent it, so the general-settings and build-settings forms can
-    // save independently without either clobbering the other.
-    if (name !== undefined && !String(name).trim()) {
-      return NextResponse.json(
-        { error: "Project name is required" },
-        { status: 400 },
-      );
-    }
-
-    const FRAMEWORKS = ["NONE", "NEXTJS", "REACT", "VITE", "NODE"];
-    if (framework !== undefined && !FRAMEWORKS.includes(framework)) {
-      return NextResponse.json({ error: "Unknown framework" }, { status: 400 });
-    }
-
-    if (branch !== undefined && !String(branch).trim()) {
-      return NextResponse.json(
-        { error: "Production branch is required" },
-        { status: 400 },
-      );
-    }
+    } = parsed.data;
 
     // Verify project ownership and existence
     const project = await prisma.project.findUnique({
@@ -169,14 +158,14 @@ export async function PUT(
         id: projectId,
       },
       data: {
-        ...(name !== undefined && { name: String(name).trim() }),
+        ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
         ...(framework !== undefined && { framework }),
         ...(buildCommand !== undefined && { buildCommand }),
         ...(installCommand !== undefined && { installCommand }),
         ...(rootDir !== undefined && { rootDir }),
         ...(outputDir !== undefined && { outputDir }),
-        ...(branch !== undefined && { branch: String(branch).trim() }),
+        ...(branch !== undefined && { branch }),
       },
     });
 

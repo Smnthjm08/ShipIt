@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.990.0",
-    "redis": "^5.10.0"
+    "redis": "^5.10.0",
+    "zod": "^4.4.3"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -31,6 +32,7 @@
     "./redis/logs": "./src/redis/logs.ts",
     "./redis/publisher": "./src/redis/publisher.ts",
     "./redis/queue": "./src/redis/queue.ts",
-    "./redis/subscriber": "./src/redis/subscriber.ts"
+    "./redis/subscriber": "./src/redis/subscriber.ts",
+    "./validation/project": "./src/validation/project.ts"
   }
 }

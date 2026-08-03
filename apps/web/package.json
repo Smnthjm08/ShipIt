@@ -34,6 +34,7 @@
     "@repo/auth": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/eslint-config": "workspace:*",
+    "@repo/shared": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@types/axios": "^0.14.4",

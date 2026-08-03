@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { realpathOrSelf } from "./paths.js";
 
 /**
  * Never publish these, even if they sit inside the output directory. A project
@@ -10,16 +11,49 @@ const isSecretFile = (name: string) =>
   name === ".env" || name.startsWith(".env.");
 const isVcsDir = (name: string) => name === ".git";
 
-export const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []) => {
-  const files = fs.readdirSync(dirPath);
-  files.forEach((file) => {
-    if (fs.statSync(dirPath + "/" + file).isDirectory()) {
-      if (isVcsDir(file)) return;
-      getAllFiles(dirPath + "/" + file, arrayOfFiles);
-    } else {
-      if (isSecretFile(file)) return;
-      arrayOfFiles.push(path.join(dirPath, "/", file));
+const isInside = (candidate: string, root: string) =>
+  candidate === root || candidate.startsWith(root + path.sep);
+
+/**
+ * Collect every file under `dirPath` for upload, bounded by `root`. The build
+ * runs arbitrary commands in the clone, so the output dir can hold a symlink to
+ * anywhere on the host (`ln -s ~/.ssh out/keys`); following one would upload its
+ * target to a public bucket.
+ */
+export const getAllFiles = (
+  dirPath: string,
+  arrayOfFiles: string[] = [],
+  root: string = realpathOrSelf(path.resolve(dirPath)),
+) => {
+  for (const name of fs.readdirSync(dirPath)) {
+    const full = path.join(dirPath, name);
+
+    // lstat, not stat — inspect the link itself rather than its target.
+    if (fs.lstatSync(full).isSymbolicLink()) {
+      let target: string;
+      try {
+        target = fs.realpathSync(full);
+      } catch {
+        continue; // broken link
+      }
+      if (!isInside(target, root)) continue;
     }
-  });
+
+    let entry: fs.Stats;
+    try {
+      entry = fs.statSync(full);
+    } catch {
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      if (isVcsDir(name)) continue;
+      getAllFiles(full, arrayOfFiles, root);
+    } else if (entry.isFile()) {
+      if (isSecretFile(name)) continue;
+      arrayOfFiles.push(full);
+    }
+  }
+
   return arrayOfFiles;
 };
