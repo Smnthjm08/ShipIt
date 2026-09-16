@@ -166,11 +166,26 @@ shipped site — the encryption protects the database and the logs.
 
 ---
 
-## 📋 Project docs
+## 🎨 Design
 
-| Doc                      | What's in it                                                      |
-| ------------------------ | ----------------------------------------------------------------- |
-| [ROADMAP.md](ROADMAP.md) | Open work — blockers, pre-launch hardening, features, refactors   |
-| [DESIGN.md](DESIGN.md)   | Design tokens: colours, typography, spacing, radius               |
-| [brand.md](brand.md)     | How that system is wired into `globals.css`, and where it departs |
-| [CLAUDE.md](CLAUDE.md)   | Architecture, conventions and pitfalls                            |
+Dark-first and near-monochrome: black primary actions, one blue reserved for
+inline links, and colour spent almost only on deployment state. Inter for text
+(600 display / 400 body), JetBrains Mono for anything machine-generated. The
+tokens live as CSS variables in
+[`apps/web/app/globals.css`](apps/web/app/globals.css), which is the source of
+truth.
+
+---
+
+## 🛠️ Development notes
+
+- **New env var?** Add it to `turbo.json` `globalEnv` as well as `.env.example`.
+  Turborepo runs in strict env mode, so an unlisted variable is `undefined` under
+  `pnpm dev` even though it's set in `.env`.
+- **ESM everywhere** — `NodeNext` resolution, so relative imports need an
+  explicit `.js` extension even from `.ts` files.
+- **Soft delete** — `Project`, `Deployment` and `DeploymentLog` set `isDeleted`
+  rather than removing rows.
+- **Single build worker** — Shipyard requeues in-flight jobs on startup, so
+  running a second worker would steal them.
+- **Missing Prisma types** after checkout: `pnpm --filter @repo/db run db:generate`.

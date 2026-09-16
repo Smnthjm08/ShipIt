@@ -40,7 +40,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Expo-derived surface + accent tokens (DESIGN.md) */
+  /* Expo-derived surface + accent tokens */
   --color-canvas: var(--canvas);
   --color-canvas-soft: var(--canvas-soft);
   --color-surface-soft: var(--surface-soft);
@@ -119,7 +119,7 @@
   /* Semantic. These are the only hues that carry meaning in the product — a
      deployment's state is the one thing colour is spent on, so they must stay
      legible on both canvases rather than matching the marketing site exactly.
-     DESIGN.md's semantic-error (#eb8e90) is a fill tint at 2.3:1 on white; it
+     Expo's semantic-error (#eb8e90) is a fill tint at 2.3:1 on white; it
      lives on as --error-soft and a readable red carries text and dots. */
   --success: #16a34a;
   --warning: #ab6400;
@@ -170,7 +170,7 @@
 }
 
 .dark {
-  /* DESIGN.md is a light-canvas marketing spec; its dark tokens describe code
+  /* Expo's tokens are a light-canvas marketing spec; their dark ones describe code
      blocks and IDE mockups. Those are the right base for an app that is dark
      first — #171717 is the canvas, #1a1a1a the one step of lift above it. */
   --canvas: #171717;
@@ -245,7 +245,7 @@
 
 /* Typography scale — a single family (Inter) split by weight and tracking:
    600 with negative tracking for display, 400 for body, JetBrains Mono for
-   anything machine-generated. See DESIGN.md. */
+   anything machine-generated. */
 @layer base {
   h1,
   h2,
@@ -348,7 +348,7 @@
     line-height: 1.5;
   }
 
-  /* Section eyebrow — DESIGN.md's `caption-uppercase` token. Used above
+  /* Section eyebrow — the `caption-uppercase` type token. Used above
      grouped content and in the sidebar. */
   .text-eyebrow {
     font-size: 11px;

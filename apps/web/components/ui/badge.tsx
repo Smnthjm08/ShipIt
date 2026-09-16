@@ -14,7 +14,7 @@ const badgeVariants = cva(
           "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
         destructive:
           "bg-destructive/10 [a]:hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 text-destructive dark:bg-destructive/20",
-        // Semantic tones from the design system (DESIGN.md) — these exist as
+        // Semantic tones from the design system — these exist as
         // tokens so status never has to reach for a raw Tailwind palette color.
         success:
           "bg-success/10 text-success dark:bg-success/15 [a]:hover:bg-success/20",
@@ -24,7 +24,7 @@ const badgeVariants = cva(
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
-        // DESIGN.md gives the blue accent exactly one job: inline links.
+        // The design system gives the blue accent exactly one job: inline links.
         // Primary stays black, so a text link must not use it.
         link: "text-brand-accent underline-offset-4 hover:underline",
       },
