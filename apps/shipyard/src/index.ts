@@ -15,6 +15,7 @@ import { buildInContainer } from "./build/run-build.js";
 import { decryptProjectEnv } from "./env/project-env.js";
 import { updateDeploymentStatus } from "./queries/deployment-status.js";
 import { startHealthServer } from "./health.js";
+import { DeploymentCancelled } from "./cancellation.js";
 
 /** Did this deployment get cancelled while we were building it? */
 async function wasCancelled(deploymentId: string | null): Promise<boolean> {
@@ -25,9 +26,20 @@ async function wasCancelled(deploymentId: string | null): Promise<boolean> {
   return row?.status === "CANCELLED";
 }
 
-/** Update status in the DB and tell any live log watchers about it. */
-async function setStatus(deploymentId: string, status: DeploymentStatus) {
-  await updateDeploymentStatus(deploymentId, status);
+/**
+ * Update status in the DB and tell any live log watchers about it.
+ *
+ * Returns false when the deployment has since been cancelled — the write is
+ * refused (CANCELLED is terminal) and nothing is announced, because a cancelled
+ * build has no business reporting that it is now building or completed.
+ */
+async function setStatus(
+  deploymentId: string,
+  status: DeploymentStatus,
+): Promise<boolean> {
+  const applied = await updateDeploymentStatus(deploymentId, status);
+  if (!applied) return false;
+
   await publishDeploymentLog({
     deploymentId,
     message: `Deployment ${status.toLowerCase()}`,
@@ -35,12 +47,20 @@ async function setStatus(deploymentId: string, status: DeploymentStatus) {
     status,
     done: status === "COMPLETED" || status === "FAILED",
   });
+  return true;
 }
 
-// The build currently in this worker's hands, and how to stop it. Both are set
-// while a container is running and cleared the moment the build ends.
+// The build currently in this worker's hands, and how to stop it.
+//
+// `activeDeploymentId` is set the moment a job is reserved, not when its
+// container starts: a cancel arriving while the repo clones or the build image
+// pulls belongs to this build too, and matching on it is how we know that.
+// `stopActiveContainer` exists only for the window a container does, so
+// `cancelRequested` records the requests that land outside it — the checkpoints
+// through the build read it and stop rather than carrying on.
 let activeDeploymentId: string | null = null;
 let stopActiveContainer: (() => Promise<void>) | null = null;
+let cancelRequested = false;
 
 async function startWorker() {
   // A build that reaches the upload step with no bucket configured has already
@@ -90,7 +110,20 @@ async function startWorker() {
   // One subscription for the worker's lifetime; requests for a build this
   // worker isn't running are ignored rather than racing another instance.
   await subscribeCancellations(async (deploymentId) => {
-    if (deploymentId !== activeDeploymentId || !stopActiveContainer) return;
+    if (deploymentId !== activeDeploymentId) return;
+    cancelRequested = true;
+
+    // Between steps: there is no container yet (still cloning, or pulling the
+    // build image) or it has already exited. Recorded above; the next
+    // checkpoint stops the build.
+    if (!stopActiveContainer) {
+      logger.warn(
+        { deploymentId },
+        "Cancellation requested — no container to stop yet",
+      );
+      return;
+    }
+
     logger.warn(
       { deploymentId },
       "Cancellation requested — stopping container",
@@ -110,6 +143,9 @@ async function startWorker() {
     try {
       deploymentIdElement = await reserveBuild(0);
       if (!deploymentIdElement) continue;
+      // Claimed before the first await below, so a cancellation published from
+      // here on matches this build instead of being dropped as unknown.
+      activeDeploymentId = deploymentIdElement;
       log = deploymentLogger(deploymentIdElement);
       log.info("Reserved deployment");
 
@@ -140,18 +176,23 @@ async function startWorker() {
         continue;
       }
 
-      await setStatus(deployment.id, DeploymentStatus.CLONING);
+      // Every setStatus below doubles as a cancellation checkpoint: it refuses
+      // to write over CANCELLED and says so, which is the one place a cancel
+      // that arrived between steps is guaranteed to be noticed.
+      if (!(await setStatus(deployment.id, DeploymentStatus.CLONING))) {
+        throw new DeploymentCancelled();
+      }
 
       repoDir = await cloneRepo(deployment);
       log.info({ repoDir }, "Repo cloned");
 
-      await setStatus(deployment.id, DeploymentStatus.BUILDING);
+      if (!(await setStatus(deployment.id, DeploymentStatus.BUILDING))) {
+        throw new DeploymentCancelled();
+      }
 
       // Decrypt here rather than inside the build so a bad key fails the
       // deployment with a clear message instead of a mid-build error.
       const envVars = decryptProjectEnv(deployment.project.envVars);
-
-      activeDeploymentId = deployment.id;
 
       // new docker container should be created for each deployment
       await buildInContainer(
@@ -164,13 +205,18 @@ async function startWorker() {
         deployment.project.outputDir || "",
         deployment.project.framework,
         envVars,
-        (stop) => {
-          stopActiveContainer = stop;
+        {
+          onContainerStart: (stop) => {
+            stopActiveContainer = stop;
+          },
+          requested: () => cancelRequested,
         },
       );
       log.info("Build finished");
 
-      await setStatus(deployment.id, DeploymentStatus.COMPLETED);
+      if (!(await setStatus(deployment.id, DeploymentStatus.COMPLETED))) {
+        throw new DeploymentCancelled();
+      }
 
       // A newer successful build supersedes any rollback pin. Without this,
       // rolling back and then deploying a fix would appear to do nothing —
@@ -185,14 +231,29 @@ async function startWorker() {
           .catch((err) => log.error({ err }, "Could not clear rollback pin"));
       }
     } catch (error) {
-      // A cancelled build throws when its container is stopped. That is the
-      // expected path, not a failure — leave the CANCELLED status alone.
-      const cancelled = await wasCancelled(deploymentIdElement);
+      // A cancelled build throws — either the container was stopped under it, or
+      // a checkpoint refused to carry it further. That is the expected path, not
+      // a failure, so leave the CANCELLED status alone. The DB is still consulted
+      // as well: a cancel can be missed entirely if Redis was down when it was
+      // published, and the row is the source of truth.
+      const cancelled =
+        error instanceof DeploymentCancelled ||
+        (await wasCancelled(deploymentIdElement));
       if (cancelled) {
         log.info("Deployment cancelled");
+        const message = "Deployment cancelled";
+        // Persisted as well as published, so the line is still there when the
+        // page is reloaded rather than only reaching whoever was watching live.
+        await prisma.deploymentLog
+          .create({
+            data: { deploymentId: deploymentIdElement!, message },
+          })
+          .catch((err) =>
+            log.error({ err }, "Could not persist cancellation log"),
+          );
         await publishDeploymentLog({
           deploymentId: deploymentIdElement!,
-          message: "Deployment cancelled",
+          message,
           timestamp: new Date().toISOString(),
           status: "CANCELLED",
           done: true,
@@ -222,6 +283,7 @@ async function startWorker() {
     } finally {
       activeDeploymentId = null;
       stopActiveContainer = null;
+      cancelRequested = false;
       // The job reached a terminal state (COMPLETED or FAILED) — drop it from the
       // processing list so startup recovery doesn't replay it.
       if (deploymentIdElement) {

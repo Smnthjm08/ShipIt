@@ -3,6 +3,10 @@ import { Framework } from "@repo/db";
 import type { EnvVarPair } from "@repo/shared/env/vars";
 import { deploymentLogger, type Logger } from "@repo/shared/logger";
 import { resolveWithin } from "../paths.js";
+import {
+  DeploymentCancelled,
+  type BuildCancellation,
+} from "../cancellation.js";
 import { getAllFiles } from "../storage/get-all-files.js";
 import { excludeDotEnvFromGit, writeDotEnvFile } from "../env/project-env.js";
 import { prepareNextProject } from "../frameworks/nextjs.js";
@@ -61,8 +65,8 @@ export const buildInContainer = async (
   outputDir: string,
   framework: Framework | null = null,
   envVars: EnvVarPair[] = [],
-  /** Receives a stopper once the container exists, for cancellation. */
-  onContainerStart?: (stop: () => Promise<void>) => void,
+  /** How this build learns it has been cancelled. See ../cancellation.ts. */
+  cancellation?: BuildCancellation,
 ) => {
   const log = deploymentLogger(deploymentId);
   const logs = new LogSink(deploymentId);
@@ -132,15 +136,35 @@ export const buildInContainer = async (
 
     // Published before start so a cancellation arriving mid-build can reach it —
     // by this point nothing outside this function holds the container.
-    onContainerStart?.(async () => {
+    cancellation?.onContainerStart(async () => {
       await container
         .stop({ t: 0 })
         .catch(() => container.kill().catch(() => {}));
     });
 
+    // A cancel that landed while the image was pulling found no container to
+    // stop, and pulling is the longest a build sits with nothing to interrupt.
+    // The container exists now but has never run, so AutoRemove will not collect
+    // it — remove it rather than starting a build nobody is waiting for.
+    if (cancellation?.requested()) {
+      log.info("Cancelled before the container started");
+      await container.remove({ force: true }).catch((err) => {
+        log.error({ err }, "Could not remove unstarted container");
+      });
+      throw new DeploymentCancelled();
+    }
+
     await container.start();
     await runToCompletion(container, { log, logs });
     log.info("Build succeeded");
+
+    // Cancelled as the build was finishing: it exited 0, but nobody wants the
+    // result. Stop before resolving an output dir (whose failure would read as a
+    // broken project) and well before anything reaches the public bucket.
+    if (cancellation?.requested()) {
+      log.info("Cancelled before artifacts were published");
+      throw new DeploymentCancelled();
+    }
 
     // Detection from package.json wins, but honour the user's pick as a
     // fallback so a project whose deps we couldn't read still checks `out`.

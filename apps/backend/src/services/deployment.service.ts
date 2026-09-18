@@ -187,6 +187,9 @@ export class DeploymentService {
    * status when it reserves the job and drops anything already CANCELLED. One
    * that is CLONING or BUILDING also needs the signal, because by then only the
    * worker holds the container.
+   *
+   * The row is written first on purpose: CANCELLED is terminal, so once it lands
+   * the worker cannot take the build any further even if the signal is lost.
    */
   async cancelDeployment(id: string): Promise<Deployment> {
     const deployment = await prisma.deployment.update({
@@ -194,8 +197,9 @@ export class DeploymentService {
       data: { status: "CANCELLED" },
     });
     await requestCancel(id).catch(() => {
-      // The DB row is the source of truth; a missed signal at worst means the
-      // container runs to completion and the worker discards the result.
+      // The signal only makes cancelling prompt. If it never arrives, the build
+      // runs on until the worker's next checkpoint, which refuses to write over
+      // the CANCELLED row and throws the build away instead of publishing it.
     });
     return deployment;
   }
